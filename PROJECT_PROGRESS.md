@@ -7,7 +7,7 @@
 - **Current phase:** Phase 2 — Identity and workspace access
 - **Current capability:** Equipment registry and archival
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last commit:** `pending equipment capability checkpoint`
+- **Last capability commit:** `7c896a4 feat: add equipment registry and archival`
 
 ## Completed capabilities
 
