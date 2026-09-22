@@ -7,7 +7,7 @@
 - **Current phase:** Phase 3 — Equipment and discovery
 - **Current capability:** Equipment QR workflow
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** `pending QR workflow checkpoint`
+- **Last capability commit:** `97ceff3 feat: add equipment QR workflow`
 
 ## Completed capabilities
 
