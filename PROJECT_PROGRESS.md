@@ -5,9 +5,9 @@
 - **Assessment date:** 2026-09-22
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
 - **Current phase:** Phase 2 — Identity and workspace access
-- **Current capability:** Roles and staff management
+- **Current capability:** Equipment registry and archival
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last commit:** `8e54200 feat: add roles and staff management`
+- **Last commit:** `pending equipment capability checkpoint`
 
 ## Completed capabilities
 
@@ -60,16 +60,36 @@ Implemented:
 
 Relevant requirements: PRD FR-02 and FR-03; TRD FR-02, FR-03, TC-02, TC-03, the manager/staff policy matrix, membership auditability, and tenant isolation.
 
+### 5. Equipment registry and archival
+
+Completed and Gate 2 approved in the current working tree.
+
+Implemented:
+
+- Manager-only equipment creation, editing, and archival.
+- Tenant-scoped equipment listing, search, and detail views for active members.
+- Equipment status tracking with historical status intervals.
+- Optimistic concurrency protection using equipment versions.
+- Soft archival using `archivedAt` and the `ARCHIVED` status.
+- Audit events for equipment creation, updates, and archival.
+- Equipment registry, creation, and detail UI flows with archive confirmation.
+- Prisma migration `0004_equipment_registry`, applied to Neon.
+- Equipment schema validation tests.
+
+QR generation and fault-report workflows remain intentionally deferred to later capabilities.
+
+Relevant requirements: PRD FR-04 and FR-05; TRD FR-04, TC-04, TC-05, equipment archival, status history, auditability, and tenant isolation.
+
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 9 passed.
+- Unit tests: 11 passed.
 - ESLint: passed.
 - Production build: passed; onboarding and API routes are present.
 - Prisma schema validation with `.env.local`: passed.
 - Neon connectivity: read-only `SELECT 1` passed.
-- Migration application: complete. Neon contains `0001_foundation`, `0002_identity_reconciliation`, and `0003_staff_management`; Prisma reports the database schema is up to date.
+- Migration application: complete. Neon contains migrations `0001_foundation`, `0002_identity_reconciliation`, `0003_staff_management`, and `0004_equipment_registry`; Prisma reports the database schema is up to date.
 - No live Clerk organization was created during verification.
 
 Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 moderate, 4 high). No forced audit upgrade was applied.
@@ -88,7 +108,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 
 ### Phase 3 — Equipment and discovery
 
-5. Equipment registry and archival.
+5. Equipment registry and archival — complete and approved.
 6. Equipment QR workflow.
 
 ### Phase 4 — Fault intake
@@ -118,4 +138,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-Begin capability 5: equipment registry and archival. The migrated Neon database is ready for future live verification with deliberate test accounts and tenant data.
+Begin capability 6: equipment QR workflow. The migrated Neon database is ready for future live verification with deliberate test accounts and tenant data.
