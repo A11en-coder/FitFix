@@ -7,7 +7,7 @@
 - **Current phase:** Phase 4 — Fault intake
 - **Current capability:** Fault-report drafts and media
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** Pending checkpoint for fault-report drafts and media
+- **Last capability commit:** `185e63b feat: add fault report drafts and media`
 
 ## Completed capabilities
 
