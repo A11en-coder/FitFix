@@ -7,7 +7,7 @@
 - **Current phase:** Phase 2 — Identity and workspace access
 - **Current capability:** Roles and staff management
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last commit:** Pending checkpoint for roles and staff management
+- **Last commit:** `8e54200 feat: add roles and staff management`
 
 ## Completed capabilities
 
@@ -118,4 +118,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-Create the approved Git checkpoint, then begin capability 5: equipment registry and archival. The migrated Neon database is ready for future live verification with deliberate test accounts and tenant data.
+Begin capability 5: equipment registry and archival. The migrated Neon database is ready for future live verification with deliberate test accounts and tenant data.
