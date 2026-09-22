@@ -7,7 +7,7 @@
 - **Current phase:** Phase 2 — Identity and workspace access
 - **Current capability:** Gym onboarding and local identity reconciliation
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last commit:** Pending checkpoint for this capability
+- **Last commit:** `86fd01d feat: add gym onboarding and identity reconciliation`
 
 ## Completed capabilities
 
