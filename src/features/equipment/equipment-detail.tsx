@@ -126,6 +126,13 @@ export function EquipmentDetail({ publicId }: { publicId: string }) {
           </a>
         </p>
       ) : null}
+      {!equipment.archivedAt ? (
+        <p>
+          <a className="button" href={`/faults/new?equipmentPublicId=${equipment.publicId}`}>
+            Report a fault
+          </a>
+        </p>
+      ) : null}
     </article>
   );
 }

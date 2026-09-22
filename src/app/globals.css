@@ -171,6 +171,26 @@ h2 {
 .equipment-toolbar + p {
   color: var(--color-muted);
 }
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.button-secondary {
+  background: transparent;
+  border: 1px solid var(--color-ink);
+  color: var(--color-ink);
+}
+.media-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.media-grid img {
+  border: 1px solid #cfd4ca;
+  border-radius: 0.5rem;
+  object-fit: cover;
+}
 @media (max-width: 700px) {
   .site-header {
     padding: 1rem;

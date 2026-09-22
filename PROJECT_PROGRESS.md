@@ -2,12 +2,12 @@
 
 ## Status
 
-- **Assessment date:** 2026-09-22
+- **Assessment date:** 2026-09-23
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
-- **Current phase:** Phase 3 — Equipment and discovery
-- **Current capability:** Equipment QR workflow
+- **Current phase:** Phase 4 — Fault intake
+- **Current capability:** Fault-report drafts and media
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** `97ceff3 feat: add equipment QR workflow`
+- **Last capability commit:** Pending checkpoint for fault-report drafts and media
 
 ## Completed capabilities
 
@@ -97,16 +97,34 @@ The QR code identifies equipment but does not bypass Clerk authentication or loc
 
 Relevant requirements: PRD FR-05 and FR-19; TRD QR service mapping, TC-05, NFR-06, and NFR-08.
 
+### 7. Fault-report drafts and media
+
+Implemented and Gate 2 approved; ready for Git checkpoint.
+
+Implemented:
+
+- Fault draft creation, retrieval, optimistic-concurrency updates, and discard APIs.
+- Tenant-safe draft access: managers can access gym drafts; staff can access their own drafts.
+- Zod validation for draft fields, media metadata, MIME types, dimensions, and size limits.
+- Fault draft and media Prisma models with migration `20260922111937_fault_drafts_and_media`.
+- Direct browser-to-Cloudinary image uploads using server-generated signatures.
+- Server-side media registration with Cloudinary URL, folder, tenant, size, and five-image limits.
+- Audit events for draft creation, saving, and discard operations.
+- Thirty-day draft expiration and retryable internal Cloudinary cleanup flow.
+- Fault draft form with local draft resumption, image upload, save, and discard actions.
+
+Relevant requirements: PRD FR-06 and FR-07; TRD fault drafts, media assets, signed uploads, retention cleanup, tenant isolation, and auditability.
+
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 14 passed.
+- Unit tests: 17 passed.
 - ESLint: passed.
-- Production build: passed; onboarding, equipment, and QR API routes are present.
+- Production build: passed; onboarding, equipment, QR, and fault-draft API routes are present.
 - Prisma schema validation with `.env.local`: passed.
 - Neon connectivity: read-only `SELECT 1` passed.
-- Migration application: complete. Neon contains migrations `0001_foundation`, `0002_identity_reconciliation`, `0003_staff_management`, and `0004_equipment_registry`; Prisma reports the database schema is up to date.
+- Migration application: complete. Neon contains migrations `0001_foundation`, `0002_identity_reconciliation`, `0003_staff_management`, `0004_equipment_registry`, and `20260922111937_fault_drafts_and_media`; Prisma reports the database schema is up to date.
 - No live Clerk organization was created during verification.
 
 Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 moderate, 4 high). No forced audit upgrade was applied.
@@ -130,7 +148,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 
 ### Phase 4 — Fault intake
 
-7. Fault-report drafts and media.
+7. Fault-report drafts and media — complete and approved.
 8. Fault submission.
 
 ### Phase 5 — Reactive-maintenance lifecycle
@@ -155,4 +173,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-Begin capability 7: fault-report drafts and media. The migrated Neon database is ready for future live verification with deliberate test accounts and tenant data.
+After the Git checkpoint, begin capability 8: fault submission. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.

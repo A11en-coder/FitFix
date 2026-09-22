@@ -39,63 +39,81 @@ enum EquipmentStatus {
   ARCHIVED
 }
 
+enum FaultSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum MediaState {
+  DRAFT
+  ATTACHED
+  DELETE_PENDING
+  DELETED
+}
+
 model Gym {
-  id                  String      @id @default(uuid()) @db.Uuid
-  clerkOrganizationId String      @unique @db.VarChar(120)
-  name                String      @db.VarChar(120)
-  slug                String      @unique @db.VarChar(80)
-  timeZone            String      @db.VarChar(64)
-  currencyCode        String      @default("AUD") @db.Char(3)
-  createdAt           DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime    @updatedAt @db.Timestamptz(3)
+  id                  String            @id @default(uuid()) @db.Uuid
+  clerkOrganizationId String            @unique @db.VarChar(120)
+  name                String            @db.VarChar(120)
+  slug                String            @unique @db.VarChar(80)
+  timeZone            String            @db.VarChar(64)
+  currencyCode        String            @default("AUD") @db.Char(3)
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
   members             GymMember[]
   invitations         StaffInvitation[]
   auditEvents         AuditEvent[]
   equipment           Equipment[]
+  faultDrafts         FaultDraft[]
+  mediaAssets         MediaAsset[]
 }
 
 model UserProfile {
-  id          String       @id @default(uuid()) @db.Uuid
-  clerkUserId String       @unique @db.VarChar(120)
-  displayName String       @db.VarChar(120)
-  email       String       @db.VarChar(254)
-  deletedAt   DateTime?    @db.Timestamptz(3)
+  id          String      @id @default(uuid()) @db.Uuid
+  clerkUserId String      @unique @db.VarChar(120)
+  displayName String      @db.VarChar(120)
+  email       String      @db.VarChar(254)
+  deletedAt   DateTime?   @db.Timestamptz(3)
   memberships GymMember[]
 }
 
 model GymMember {
-  id            String       @id @default(uuid()) @db.Uuid
-  gymId         String       @db.Uuid
-  userId        String       @db.Uuid
-  role          MemberRole   @default(STAFF)
-  status        MemberStatus @default(INVITED)
-  joinedAt      DateTime?    @db.Timestamptz(3)
-  deactivatedAt DateTime?    @db.Timestamptz(3)
-  gym           Gym          @relation(fields: [gymId], references: [id], onDelete: Restrict)
-  user          UserProfile  @relation(fields: [userId], references: [id], onDelete: Restrict)
-  sentInvitations StaffInvitation[]
-  auditEvents     AuditEvent[]
+  id                       String                    @id @default(uuid()) @db.Uuid
+  gymId                    String                    @db.Uuid
+  userId                   String                    @db.Uuid
+  role                     MemberRole                @default(STAFF)
+  status                   MemberStatus              @default(INVITED)
+  joinedAt                 DateTime?                 @db.Timestamptz(3)
+  deactivatedAt            DateTime?                 @db.Timestamptz(3)
+  gym                      Gym                       @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  user                     UserProfile               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  sentInvitations          StaffInvitation[]
+  auditEvents              AuditEvent[]
   equipmentStatusIntervals EquipmentStatusInterval[]
+  faultDrafts              FaultDraft[]
+  uploadedMedia            MediaAsset[]
 
+  @@unique([gymId, userId])
   @@index([gymId])
   @@index([userId, status])
-  @@unique([gymId, userId])
 }
 
 model StaffInvitation {
-  id               String                @id @default(uuid()) @db.Uuid
-  gymId            String                @db.Uuid
+  id                String                @id @default(uuid()) @db.Uuid
+  gymId             String                @db.Uuid
   invitedByMemberId String                @db.Uuid
-  clerkInvitationId String               @unique @db.VarChar(120)
-  idempotencyKey   String                @db.VarChar(160)
-  email            String                @db.VarChar(254)
-  role             MemberRole            @default(STAFF)
-  status           StaffInvitationStatus @default(PENDING)
-  expiresAt        DateTime              @db.Timestamptz(3)
-  createdAt        DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime              @updatedAt @db.Timestamptz(3)
-  gym              Gym                   @relation(fields: [gymId], references: [id], onDelete: Restrict)
-  invitedByMember  GymMember             @relation(fields: [invitedByMemberId], references: [id], onDelete: Restrict)
+  clerkInvitationId String                @unique @db.VarChar(120)
+  idempotencyKey    String                @db.VarChar(160)
+  email             String                @db.VarChar(254)
+  role              MemberRole            @default(STAFF)
+  status            StaffInvitationStatus @default(PENDING)
+  expiresAt         DateTime              @db.Timestamptz(3)
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime              @updatedAt @db.Timestamptz(3)
+  gym               Gym                   @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  invitedByMember   GymMember             @relation(fields: [invitedByMemberId], references: [id], onDelete: Restrict)
 
   @@unique([gymId, idempotencyKey])
   @@index([gymId, status])
@@ -103,38 +121,39 @@ model StaffInvitation {
 }
 
 model AuditEvent {
-  id            String      @id @default(uuid()) @db.Uuid
-  gymId         String      @db.Uuid
-  actorMemberId String?     @db.Uuid
-  entityType    String      @db.VarChar(80)
-  entityId      String      @db.Uuid
-  action        String      @db.VarChar(80)
-  metadata      Json        @default("{}")
-  requestId     String      @db.VarChar(64)
-  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
-  gym           Gym         @relation(fields: [gymId], references: [id], onDelete: Restrict)
-  actorMember   GymMember?  @relation(fields: [actorMemberId], references: [id], onDelete: SetNull)
+  id            String     @id @default(uuid()) @db.Uuid
+  gymId         String     @db.Uuid
+  actorMemberId String?    @db.Uuid
+  entityType    String     @db.VarChar(80)
+  entityId      String     @db.Uuid
+  action        String     @db.VarChar(80)
+  metadata      Json       @default("{}")
+  requestId     String     @db.VarChar(64)
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+  gym           Gym        @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  actorMember   GymMember? @relation(fields: [actorMemberId], references: [id], onDelete: SetNull)
 
   @@index([gymId, createdAt])
   @@index([entityType, entityId])
 }
 
 model Equipment {
-  id            String          @id @default(uuid()) @db.Uuid
-  gymId         String          @db.Uuid
-  publicId      String          @unique @db.VarChar(26)
-  assetId       String          @db.VarChar(50)
-  name          String          @db.VarChar(120)
-  category      String          @db.VarChar(80)
-  location      String          @db.VarChar(80)
-  description   String?         @db.Text
-  currentStatus EquipmentStatus @default(AVAILABLE)
-  version       Int             @default(1)
-  archivedAt    DateTime?       @db.Timestamptz(3)
-  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime        @updatedAt @db.Timestamptz(3)
-  gym           Gym             @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  id              String                    @id @default(uuid()) @db.Uuid
+  gymId           String                    @db.Uuid
+  publicId        String                    @unique @db.VarChar(26)
+  assetId         String                    @db.VarChar(50)
+  name            String                    @db.VarChar(120)
+  category        String                    @db.VarChar(80)
+  location        String                    @db.VarChar(80)
+  description     String?                   @db.Text
+  currentStatus   EquipmentStatus           @default(AVAILABLE)
+  version         Int                       @default(1)
+  archivedAt      DateTime?                 @db.Timestamptz(3)
+  createdAt       DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                  @updatedAt @db.Timestamptz(3)
+  gym             Gym                       @relation(fields: [gymId], references: [id], onDelete: Restrict)
   statusIntervals EquipmentStatusInterval[]
+  faultDrafts     FaultDraft[]
 
   @@unique([gymId, assetId])
   @@index([gymId, currentStatus])
@@ -143,18 +162,63 @@ model Equipment {
 }
 
 model EquipmentStatusInterval {
-  id              String          @id @default(uuid()) @db.Uuid
-  equipmentId     String          @db.Uuid
-  status          EquipmentStatus
-  startedAt       DateTime        @default(now()) @db.Timestamptz(3)
-  endedAt         DateTime?       @db.Timestamptz(3)
-  sourceFaultId   String?         @db.Uuid
-  changedByMemberId String        @db.Uuid
-  equipment       Equipment       @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
-  changedByMember GymMember       @relation(fields: [changedByMemberId], references: [id], onDelete: Restrict)
+  id                String          @id @default(uuid()) @db.Uuid
+  equipmentId       String          @db.Uuid
+  status            EquipmentStatus
+  startedAt         DateTime        @default(now()) @db.Timestamptz(3)
+  endedAt           DateTime?       @db.Timestamptz(3)
+  sourceFaultId     String?         @db.Uuid
+  changedByMemberId String          @db.Uuid
+  equipment         Equipment       @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  changedByMember   GymMember       @relation(fields: [changedByMemberId], references: [id], onDelete: Restrict)
 
   @@index([equipmentId, startedAt])
   @@index([equipmentId, endedAt])
+}
+
+model FaultDraft {
+  id              String           @id @default(uuid()) @db.Uuid
+  gymId           String           @db.Uuid
+  authorMemberId  String           @db.Uuid
+  equipmentId     String?          @db.Uuid
+  title           String?          @db.VarChar(160)
+  description     String?          @db.Text
+  severity        FaultSeverity?
+  equipmentStatus EquipmentStatus?
+  immediateAction String?          @db.Text
+  discoveredAt    DateTime?        @db.Timestamptz(3)
+  version         Int              @default(1)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+  gym             Gym              @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  authorMember    GymMember        @relation(fields: [authorMemberId], references: [id], onDelete: Restrict)
+  equipment       Equipment?       @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  mediaAssets     MediaAsset[]
+
+  @@index([gymId, authorMemberId, updatedAt])
+  @@index([updatedAt])
+  @@index([equipmentId])
+}
+
+model MediaAsset {
+  id                 String      @id @default(uuid()) @db.Uuid
+  gymId              String      @db.Uuid
+  uploadedByMemberId String      @db.Uuid
+  cloudinaryPublicId String      @unique @db.VarChar(255)
+  secureUrl          String      @db.Text
+  mimeType           String      @db.VarChar(64)
+  bytes              Int
+  width              Int
+  height             Int
+  state              MediaState  @default(DRAFT)
+  draftId            String?     @db.Uuid
+  createdAt          DateTime    @default(now()) @db.Timestamptz(3)
+  gym                Gym         @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  uploadedByMember   GymMember   @relation(fields: [uploadedByMemberId], references: [id], onDelete: Restrict)
+  draft              FaultDraft? @relation(fields: [draftId], references: [id], onDelete: Restrict)
+
+  @@index([gymId, state, createdAt])
+  @@index([draftId, state])
 }
 
 model WebhookEvent {
