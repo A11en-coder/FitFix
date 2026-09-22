@@ -4,10 +4,10 @@
 
 - **Assessment date:** 2026-09-21
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` (PRD v1.0) and `docs/FitFix_Technical_Requirements_Document.md`
-- **Current phase:** Phase 1 — Foundation gate
-- **Current capability:** Project foundation and tenant-safe data layer
-- **Approval state:** Complete; Gate 2 approved
-- **Last commit:** `f67720d feat: establish FitFix foundation`
+- **Current phase:** Phase 2 — Identity and workspace access
+- **Current capability:** Gym onboarding and local identity reconciliation
+- **Approval state:** Public entry points and authentication complete; Gate 2 approved
+- **Last commit:** `239f311 feat: add public entry points and authentication`
 
 ## Current implementation state
 
@@ -21,6 +21,15 @@ Git is on `master` with no commits. The implementation files and generated lockf
 - Verified: Prisma schema validation with placeholder database URLs; 3 tenant-guard tests pass; TypeScript passes; scoped ESLint passes; production build passes.
 - Not run: applying the migration to a live PostgreSQL/Neon database, because no development database credentials are configured in the repository.
 - Known environment note: npm reported 5 dependency audit findings (1 moderate, 4 high) after installation; no forced audit upgrade was applied because it could introduce unreviewed breaking changes.
+
+### Public entry points and authentication implementation status
+
+- Completed: TRD-aligned `src/app` route structure, public landing/privacy/terms/support pages, Clerk provider, Clerk middleware session plumbing, sign-in/sign-up routes, signed-in navigation controls, protected dashboard boundary, Clerk environment documentation, and public fallback messaging when keys are absent.
+- Verified: TypeScript, tenant guard tests, ESLint, and production build. The build recognizes all public/auth/workspace routes.
+- Not run: live Clerk sign-in/sign-up or protected dashboard access, because no Clerk publishable/secret keys are configured in this workspace.
+- Scope boundary: gym onboarding, local identity reconciliation, organization webhooks, and role policies remain in later capabilities.
+
+The public entry points and authentication capability is complete and approved. The next capability is gym onboarding and local identity reconciliation.
 
 ## Ordered capability roadmap
 
@@ -133,4 +142,4 @@ No implementation files have been created yet; these are the planned outputs, no
 
 ## Next action
 
-Foundation capability approved and ready for its Git checkpoint. The next capability is public entry points and authentication.
+Begin gym onboarding and local identity reconciliation only after a new capability briefing and approval gate.

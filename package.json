@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint app src tests next.config.mjs --max-warnings=0",
+    "lint": "eslint src tests next.config.mjs --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts",
     "db:validate": "prisma validate",
@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
+    "@clerk/nextjs": "^6.31.0",
     "next": "^15.4.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
