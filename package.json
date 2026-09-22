@@ -1,12 +1,37 @@
 {
   "name": "fitfix",
   "version": "1.0.0",
-  "description": "a gym-specific SaaS product for independent-gym owners, managers and staff",
+  "private": true,
+  "description": "A gym-specific maintenance workspace for independent gyms",
   "license": "ISC",
-  "author": "Allen",
-  "type": "commonjs",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint app src tests next.config.mjs --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/**/*.test.ts",
+    "db:validate": "prisma validate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.15.0",
+    "next": "^15.4.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "eslint": "^9.27.0",
+    "eslint-config-next": "^15.4.6",
+    "prisma": "^6.15.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
   }
 }

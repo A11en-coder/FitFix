@@ -4,16 +4,23 @@
 
 - **Assessment date:** 2026-09-21
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` (PRD v1.0) and `docs/FitFix_Technical_Requirements_Document.md`
-- **Current phase:** Pre-implementation intake and roadmap
-- **Current capability:** None implemented
-- **Approval state:** Waiting for Approval Gate 1 for the foundation capability
-- **Last commit:** None; Git repository has no commits
+- **Current phase:** Phase 1 — Foundation gate
+- **Current capability:** Project foundation and tenant-safe data layer
+- **Approval state:** Complete; Gate 2 approved
+- **Last commit:** `f67720d feat: establish FitFix foundation`
 
 ## Current implementation state
 
-The repository is specification-only. It contains the PRD, TRD, the guided implementation skill, an empty progress file, and a minimal `package.json`. There is currently no Next.js application, TypeScript configuration, UI, server code, Prisma schema or migrations, test harness, CI configuration, environment template, authentication integration, or deployment configuration.
+The foundation capability is implemented. The repository now contains a minimal Next.js App Router shell, typed configuration validation, a Prisma/PostgreSQL foundation schema and migration, a server-side tenant context/guard boundary, request context utilities, a health route, foundation tests, lint/typecheck/build scripts, and CI configuration. Authentication, onboarding, roles, equipment, faults, media, notifications, and dashboards remain intentionally unimplemented.
 
-Git is on `master` with no commits. Existing files are untracked. No implementation files have been changed during this intake.
+Git is on `master` with no commits. The implementation files and generated lockfile are currently uncommitted. No unrelated product capability was added.
+
+### Foundation implementation status
+
+- Completed: Next.js/TypeScript shell, environment template, design-token baseline, Prisma schema, initial migration, request ID utility, tenant context resolution, cross-tenant resource denial, health endpoint, tests, lint, typecheck, build, and CI workflow.
+- Verified: Prisma schema validation with placeholder database URLs; 3 tenant-guard tests pass; TypeScript passes; scoped ESLint passes; production build passes.
+- Not run: applying the migration to a live PostgreSQL/Neon database, because no development database credentials are configured in the repository.
+- Known environment note: npm reported 5 dependency audit findings (1 moderate, 4 high) after installation; no forced audit upgrade was applied because it could introduce unreviewed breaking changes.
 
 ## Ordered capability roadmap
 
@@ -126,4 +133,4 @@ No implementation files have been created yet; these are the planned outputs, no
 
 ## Next action
 
-Waiting for explicit Approval Gate 1 before creating implementation code for the foundation capability.
+Foundation capability approved and ready for its Git checkpoint. The next capability is public entry points and authentication.

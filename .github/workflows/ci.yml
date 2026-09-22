@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:validate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/fitfix
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/fitfix
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build

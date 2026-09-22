@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum MemberRole {
+  MANAGER
+  STAFF
+}
+
+enum MemberStatus {
+  INVITED
+  ACTIVE
+  DEACTIVATED
+}
+
+model Gym {
+  id                  String      @id @default(uuid()) @db.Uuid
+  clerkOrganizationId String      @unique @db.VarChar(120)
+  name                String      @db.VarChar(120)
+  slug                String      @unique @db.VarChar(80)
+  timeZone            String      @db.VarChar(64)
+  currencyCode        String      @default("AUD") @db.Char(3)
+  createdAt           DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime    @updatedAt @db.Timestamptz(3)
+  members             GymMember[]
+}
+
+model UserProfile {
+  id          String       @id @default(uuid()) @db.Uuid
+  clerkUserId String       @unique @db.VarChar(120)
+  displayName String       @db.VarChar(120)
+  email       String       @db.VarChar(254)
+  deletedAt   DateTime?    @db.Timestamptz(3)
+  memberships GymMember[]
+}
+
+model GymMember {
+  id            String       @id @default(uuid()) @db.Uuid
+  gymId         String       @db.Uuid
+  userId        String       @db.Uuid
+  role          MemberRole   @default(STAFF)
+  status        MemberStatus @default(INVITED)
+  joinedAt      DateTime?    @db.Timestamptz(3)
+  deactivatedAt DateTime?    @db.Timestamptz(3)
+  gym           Gym          @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  user          UserProfile  @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([gymId])
+  @@index([userId, status])
+  @@unique([gymId, userId])
+}
