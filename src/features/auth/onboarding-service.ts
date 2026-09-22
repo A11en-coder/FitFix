@@ -110,6 +110,9 @@ async function findOrCreateOrganization(
     return existing;
   } catch (error) {
     if (error instanceof Error && error.message === "The gym slug is already in use.") throw error;
+    // Only a missing organization should fall through to creation. Configuration,
+    // authentication, and Clerk availability errors must reach the API boundary.
+    if (!isNotFoundError(error)) throw error;
     try {
       return await clerk.createOrganization({
         name: input.name,
@@ -117,11 +120,24 @@ async function findOrCreateOrganization(
         createdBy: userId,
       });
     } catch (createError) {
-      const existing = await clerk.getOrganization({ slug: input.slug });
-      if (existing.createdBy !== userId) throw createError;
-      return existing;
+      try {
+        const existing = await clerk.getOrganization({ slug: input.slug });
+        if (existing.createdBy !== userId) throw createError;
+        return existing;
+      } catch (lookupError) {
+        // Preserve the creation rejection when the organization is still absent;
+        // otherwise the second lookup masks the actionable Clerk error.
+        if (isNotFoundError(lookupError)) throw createError;
+        throw lookupError;
+      }
     }
   }
+}
+
+function isNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { status?: unknown; statusCode?: unknown };
+  return candidate.status === 404 || candidate.statusCode === 404;
 }
 
 export async function reconcileClerkWebhook(

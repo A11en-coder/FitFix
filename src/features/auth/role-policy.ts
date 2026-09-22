@@ -32,7 +32,7 @@ export function assertManager(membership: ActiveMembership): void {
   if (membership.role !== MemberRole.MANAGER) throw new AuthorizationError();
 }
 
-// This function checks if the user has a staff role in the gym membership.
+// This function maps a member role to the corresponding Clerk role for the organization. Managers are mapped to "org:admin", while regular members are mapped to "org:member".
 export function clerkRoleForMemberRole(role: MemberRole): "org:admin" | "org:member" {
   return role === MemberRole.MANAGER ? "org:admin" : "org:member";
 }

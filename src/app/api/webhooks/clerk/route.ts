@@ -1,3 +1,4 @@
+// this file defines the API route for handling Clerk webhooks related to identity reconciliation and onboarding.
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "../../../../server/db";
@@ -11,9 +12,11 @@ import { createRequestContext } from "../../../../server/request-context";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  // Create a request context for logging and tracing
   const requestContext = createRequestContext();
   let event;
   try {
+    // Verify the webhook request and parse the Clerk webhook event
     event = parseClerkWebhookEvent(await verifyWebhook(request));
   } catch {
     return NextResponse.json(
@@ -26,10 +29,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Check if the webhook event has already been processed to avoid duplicate processing
   const existing = await db.webhookEvent.findUnique({
     where: { provider_providerEventId: { provider: "CLERK", providerEventId: event.id } },
   });
   if (existing?.status === "PROCESSED") return NextResponse.json({ ok: true, duplicate: true });
+  // Record the webhook event in the database with a status of "RECEIVED" to track its processing state
   if (existing)
     await db.webhookEvent.update({
       where: { id: existing.id },

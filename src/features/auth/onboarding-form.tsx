@@ -14,19 +14,28 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
-    const response = await fetch("/api/gyms", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, slug }),
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => null);
-      setError(body?.message ?? "We could not create the gym workspace.");
+    try {
+      const response = await fetch("/api/gyms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, slug }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        setError(
+          body?.requestId
+            ? `${body?.message ?? "We could not create the gym workspace."} (Request ${body.requestId})`
+            : (body?.message ?? "We could not create the gym workspace."),
+        );
+        setSubmitting(false);
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("The workspace service is unavailable. Please try again.");
       setSubmitting(false);
-      return;
     }
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
