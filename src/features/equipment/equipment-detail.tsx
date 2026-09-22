@@ -119,7 +119,13 @@ export function EquipmentDetail({ publicId }: { publicId: string }) {
         </form>
       ) : null}
       {message ? <p role="status">{message}</p> : null}
-      <p>QR setup will be available in the next capability.</p>
+      {canManage && !equipment.archivedAt ? (
+        <p>
+          <a className="button" href={`/api/equipment/${equipment.publicId}/qr`} download>
+            Download QR code
+          </a>
+        </p>
+      ) : null}
     </article>
   );
 }

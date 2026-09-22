@@ -4,10 +4,10 @@
 
 - **Assessment date:** 2026-09-22
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
-- **Current phase:** Phase 2 — Identity and workspace access
-- **Current capability:** Equipment registry and archival
+- **Current phase:** Phase 3 — Equipment and discovery
+- **Current capability:** Equipment QR workflow
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** `7c896a4 feat: add equipment registry and archival`
+- **Last capability commit:** `pending QR workflow checkpoint`
 
 ## Completed capabilities
 
@@ -76,17 +76,34 @@ Implemented:
 - Prisma migration `0004_equipment_registry`, applied to Neon.
 - Equipment schema validation tests.
 
-QR generation and fault-report workflows remain intentionally deferred to later capabilities.
+Fault-report workflows remain intentionally deferred to later capabilities.
 
 Relevant requirements: PRD FR-04 and FR-05; TRD FR-04, TC-04, TC-05, equipment archival, status history, auditability, and tenant isolation.
+
+### 6. Equipment QR workflow
+
+Completed and Gate 2 approved in the current working tree.
+
+Implemented:
+
+- Manager-only QR PNG generation for active equipment.
+- QR payloads using `APP_URL` and the equipment's opaque `publicId`.
+- Download action on the equipment detail page.
+- Tenant-scoped lookup and archive protection for QR generation.
+- Private, non-cacheable image responses with sanitized filenames.
+- QR URL and PNG output tests.
+
+The QR code identifies equipment but does not bypass Clerk authentication or local gym membership checks. Printable PDF labels remain a later enhancement.
+
+Relevant requirements: PRD FR-05 and FR-19; TRD QR service mapping, TC-05, NFR-06, and NFR-08.
 
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 11 passed.
+- Unit tests: 14 passed.
 - ESLint: passed.
-- Production build: passed; onboarding and API routes are present.
+- Production build: passed; onboarding, equipment, and QR API routes are present.
 - Prisma schema validation with `.env.local`: passed.
 - Neon connectivity: read-only `SELECT 1` passed.
 - Migration application: complete. Neon contains migrations `0001_foundation`, `0002_identity_reconciliation`, `0003_staff_management`, and `0004_equipment_registry`; Prisma reports the database schema is up to date.
@@ -109,7 +126,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 ### Phase 3 — Equipment and discovery
 
 5. Equipment registry and archival — complete and approved.
-6. Equipment QR workflow.
+6. Equipment QR workflow — complete and approved.
 
 ### Phase 4 — Fault intake
 
@@ -138,4 +155,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-Begin capability 6: equipment QR workflow. The migrated Neon database is ready for future live verification with deliberate test accounts and tenant data.
+Begin capability 7: fault-report drafts and media. The migrated Neon database is ready for future live verification with deliberate test accounts and tenant data.

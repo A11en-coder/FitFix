@@ -73,6 +73,20 @@ export async function getEquipment(
   return { equipment, canManage: membership.role === "MANAGER" };
 }
 
+export async function getEquipmentQrTarget(
+  publicId: string,
+  membership: ActiveMembership,
+  database: DbClient = db,
+) {
+  assertManager(membership);
+  const equipment = await database.equipment.findFirst({
+    where: { publicId, gymId: membership.gymId, archivedAt: null },
+    select: { publicId: true, assetId: true, name: true },
+  });
+  if (!equipment) throw new EquipmentNotFoundError();
+  return equipment;
+}
+
 // this function creates a new equipment record in the database, along with an initial status interval and an audit event
 export async function createEquipment(
   input: EquipmentCreateInput,
@@ -80,7 +94,7 @@ export async function createEquipment(
   requestId: string,
   database: DbClient = db,
 ) {
-  // ensure that the user has the "MANAGER" role 
+  // ensure that the user has the "MANAGER" role
   assertManager(membership);
   const publicId = randomUUID().replaceAll("-", "").slice(0, 26).toUpperCase();
   try {
