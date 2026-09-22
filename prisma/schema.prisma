@@ -19,6 +19,12 @@ enum MemberStatus {
   DEACTIVATED
 }
 
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
 model Gym {
   id                  String      @id @default(uuid()) @db.Uuid
   clerkOrganizationId String      @unique @db.VarChar(120)
@@ -54,4 +60,18 @@ model GymMember {
   @@index([gymId])
   @@index([userId, status])
   @@unique([gymId, userId])
+}
+
+model WebhookEvent {
+  id              String        @id @default(uuid()) @db.Uuid
+  provider        String        @default("CLERK") @db.VarChar(32)
+  providerEventId String        @db.VarChar(255)
+  eventType       String        @db.VarChar(120)
+  receivedAt      DateTime      @default(now()) @db.Timestamptz(3)
+  processedAt     DateTime?     @db.Timestamptz(3)
+  status          WebhookStatus @default(RECEIVED)
+  errorCode       String?       @db.VarChar(120)
+
+  @@unique([provider, providerEventId])
+  @@index([status, receivedAt])
 }
