@@ -5,9 +5,9 @@
 - **Assessment date:** 2026-09-22
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
 - **Current phase:** Phase 2 — Identity and workspace access
-- **Current capability:** Gym onboarding and local identity reconciliation
+- **Current capability:** Roles and staff management
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last commit:** `86fd01d feat: add gym onboarding and identity reconciliation`
+- **Last commit:** Pending checkpoint for roles and staff management
 
 ## Completed capabilities
 
@@ -42,16 +42,34 @@ Implemented:
 
 Relevant requirements: PRD FR-01; TRD FR-01, SP-02, TC-01, Clerk integration, identity reconciliation, and webhook replay safety.
 
+### 4. Roles and staff management
+
+Completed and Gate 2 approved in the current working tree.
+
+Implemented:
+
+- Manager-only staff listing, invitation, role-change, and deactivation APIs.
+- Manager/staff policy guards based on active local `GymMember` membership.
+- Clerk Organization invitations and membership role synchronization.
+- Local `StaffInvitation` persistence with idempotency keys and invitation lifecycle status.
+- Local `AuditEvent` records for invitation, role, and access changes.
+- Last-manager and self-deactivation safeguards.
+- Staff management page with retry-safe invitation UI, role controls, and deactivation controls.
+- Webhook reconciliation for accepted and revoked organization invitations.
+- Role policy tests and authorization-focused validation.
+
+Relevant requirements: PRD FR-02 and FR-03; TRD FR-02, FR-03, TC-02, TC-03, the manager/staff policy matrix, membership auditability, and tenant isolation.
+
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 7 passed.
+- Unit tests: 9 passed.
 - ESLint: passed.
 - Production build: passed; onboarding and API routes are present.
 - Prisma schema validation with `.env.local`: passed.
 - Neon connectivity: read-only `SELECT 1` passed.
-- Migration application: complete. Neon contains `0001_foundation` and `0002_identity_reconciliation`; Prisma reports the database schema is up to date.
+- Migration application: complete. Neon contains `0001_foundation`, `0002_identity_reconciliation`, and `0003_staff_management`; Prisma reports the database schema is up to date.
 - No live Clerk organization was created during verification.
 
 Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 moderate, 4 high). No forced audit upgrade was applied.
@@ -66,7 +84,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 
 2. Public entry points and authentication — complete.
 3. Gym onboarding and local identity reconciliation — complete and approved.
-4. Roles and staff management — manager/staff policies, invitations, membership synchronization, deactivation, and authorization tests.
+4. Roles and staff management — complete and approved.
 
 ### Phase 3 — Equipment and discovery
 
@@ -100,4 +118,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-Begin capability 4: roles and staff management. Live onboarding verification can now proceed against the migrated Neon database, with care to use a deliberate test account and workspace slug.
+Create the approved Git checkpoint, then begin capability 5: equipment registry and archival. The migrated Neon database is ready for future live verification with deliberate test accounts and tenant data.

@@ -129,6 +129,21 @@ export async function reconcileClerkWebhook(
   data: Record<string, unknown>,
   database: DbClient = db,
 ) {
+  if (eventType.startsWith("organizationInvitation.")) {
+    const invitationId = stringValue(data.id);
+    if (!invitationId) return;
+    const status = eventType.endsWith("revoked")
+      ? "REVOKED"
+      : eventType.endsWith("accepted")
+        ? "ACCEPTED"
+        : undefined;
+    if (status)
+      await database.staffInvitation.updateMany({
+        where: { clerkInvitationId: invitationId },
+        data: { status },
+      });
+    return;
+  }
   if (eventType === "organization.created") {
     const organizationId = stringValue(data.id);
     if (!organizationId) return;
@@ -189,6 +204,12 @@ export async function reconcileClerkWebhook(
       deactivatedAt: status === "DEACTIVATED" ? new Date() : null,
     },
   });
+  if (status === "ACTIVE") {
+    await database.staffInvitation.updateMany({
+      where: { gymId: gym.id, email: emailFromClerkData(data), status: "PENDING" },
+      data: { status: "ACCEPTED" },
+    });
+  }
 }
 
 export function webhookErrorCode(error: unknown): string {

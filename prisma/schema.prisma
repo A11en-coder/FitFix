@@ -25,6 +25,13 @@ enum WebhookStatus {
   FAILED
 }
 
+enum StaffInvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
 model Gym {
   id                  String      @id @default(uuid()) @db.Uuid
   clerkOrganizationId String      @unique @db.VarChar(120)
@@ -35,6 +42,8 @@ model Gym {
   createdAt           DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime    @updatedAt @db.Timestamptz(3)
   members             GymMember[]
+  invitations         StaffInvitation[]
+  auditEvents         AuditEvent[]
 }
 
 model UserProfile {
@@ -56,10 +65,49 @@ model GymMember {
   deactivatedAt DateTime?    @db.Timestamptz(3)
   gym           Gym          @relation(fields: [gymId], references: [id], onDelete: Restrict)
   user          UserProfile  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  sentInvitations StaffInvitation[]
+  auditEvents     AuditEvent[]
 
   @@index([gymId])
   @@index([userId, status])
   @@unique([gymId, userId])
+}
+
+model StaffInvitation {
+  id               String                @id @default(uuid()) @db.Uuid
+  gymId            String                @db.Uuid
+  invitedByMemberId String                @db.Uuid
+  clerkInvitationId String               @unique @db.VarChar(120)
+  idempotencyKey   String                @db.VarChar(160)
+  email            String                @db.VarChar(254)
+  role             MemberRole            @default(STAFF)
+  status           StaffInvitationStatus @default(PENDING)
+  expiresAt        DateTime              @db.Timestamptz(3)
+  createdAt        DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime              @updatedAt @db.Timestamptz(3)
+  gym              Gym                   @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  invitedByMember  GymMember             @relation(fields: [invitedByMemberId], references: [id], onDelete: Restrict)
+
+  @@unique([gymId, idempotencyKey])
+  @@index([gymId, status])
+  @@index([gymId, email, status])
+}
+
+model AuditEvent {
+  id            String      @id @default(uuid()) @db.Uuid
+  gymId         String      @db.Uuid
+  actorMemberId String?     @db.Uuid
+  entityType    String      @db.VarChar(80)
+  entityId      String      @db.Uuid
+  action        String      @db.VarChar(80)
+  metadata      Json        @default("{}")
+  requestId     String      @db.VarChar(64)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+  gym           Gym         @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  actorMember   GymMember?  @relation(fields: [actorMemberId], references: [id], onDelete: SetNull)
+
+  @@index([gymId, createdAt])
+  @@index([entityType, entityId])
 }
 
 model WebhookEvent {
