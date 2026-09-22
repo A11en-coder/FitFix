@@ -51,7 +51,7 @@ Relevant requirements: PRD FR-01; TRD FR-01, SP-02, TC-01, Clerk integration, id
 - Production build: passed; onboarding and API routes are present.
 - Prisma schema validation with `.env.local`: passed.
 - Neon connectivity: read-only `SELECT 1` passed.
-- Migration application: not performed. The database is reachable, but Prisma migration metadata is not initialized; migrations must be applied before onboarding can persist records.
+- Migration application: complete. Neon contains `0001_foundation` and `0002_identity_reconciliation`; Prisma reports the database schema is up to date.
 - No live Clerk organization was created during verification.
 
 Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 moderate, 4 high). No forced audit upgrade was applied.
@@ -100,4 +100,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-Create the approved Git checkpoint, then begin capability 4: roles and staff management. Apply the pending Prisma migrations to the configured Neon database before performing live onboarding verification.
+Begin capability 4: roles and staff management. Live onboarding verification can now proceed against the migrated Neon database, with care to use a deliberate test account and workspace slug.
