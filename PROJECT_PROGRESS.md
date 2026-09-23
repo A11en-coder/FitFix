@@ -238,7 +238,7 @@ Relevant requirements: PRD FR-13, FR-14, and FR-15; TRD equipment history, downt
 
 ### 14. Manager and staff dashboards
 
-Implemented and Gate 2 approved; ready for Git checkpoint.
+Implemented and Gate 2 approved; committed in `1fdeb10 feat: add manager and staff dashboards`.
 
 Implemented:
 
@@ -265,9 +265,9 @@ Relevant requirements: PRD FR-17 and US-09; TRD role-specific dashboard aggregat
 - Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, manager-review, assignment, and lifecycle API routes are present.
 - Latest verification: 28 unit tests passed, typecheck passed, ESLint passed, Prettier passed, production build passed, and the dashboard route/page compiled successfully.
 - Prisma schema validation with `.env.local`: passed.
-- Dashboard migration deployment: not applied; `prisma migrate dev --create-only` and `prisma migrate deploy` reached the configured Neon datasource but returned a generic Prisma schema-engine error. The reviewed migration file remains ready for retry.
+- Dashboard migration deployment: passed. Neon migration `20260924010000_dashboard_indexes` was applied successfully, and `prisma migrate status` reports that the database schema is up to date.
 - Neon connectivity: read-only `SELECT 1` passed.
-- Migration application: complete. Neon migration `20260922235107_fault_submission` was created and applied after `20260922111937_fault_drafts_and_media`. A later status check could not reconnect to the configured Neon endpoint.
+- Earlier migration application: complete. Neon migration `20260922235107_fault_submission` was created and applied after `20260922111937_fault_drafts_and_media`; the later transient connectivity issue was resolved during dashboard migration verification.
 - No live Clerk organization was created during verification.
 
 Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 moderate, 4 high). No forced audit upgrade was applied.
@@ -316,4 +316,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-After the Git checkpoint, begin capability 15: responsive and accessible product completion. The dashboard index migration should be applied to Neon when the Prisma schema engine can reconnect to the configured endpoint.
+After the Git checkpoint, begin capability 15: responsive and accessible product completion.
