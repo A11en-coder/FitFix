@@ -58,19 +58,23 @@ export function EquipmentDetail({ publicId }: { publicId: string }) {
   const [canManage, setCanManage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void fetch(`/api/equipment/${publicId}`).then(async (response) => {
-      const body = await response.json();
-      if (response.ok) {
-        setEquipment(body.equipment);
-        setCanManage(body.canManage);
-      } else setMessage(body.message ?? "Equipment could not be loaded.");
-    });
+    void fetch(`/api/equipment/${publicId}`)
+      .then(async (response) => {
+        const body = await response.json();
+        if (response.ok) {
+          setEquipment(body.equipment);
+          setCanManage(body.canManage);
+        } else setMessage(body.message ?? "Equipment could not be loaded.");
+      })
+      .catch(() => setMessage("Equipment could not be loaded. Check your connection and retry."))
+      .finally(() => setLoading(false));
   }, [publicId]);
 
   if (message) return <p role="alert">{message}</p>;
-  if (!equipment) return <p>Loading equipment…</p>;
+  if (loading || !equipment) return <p role="status">Loading equipment…</p>;
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -102,7 +106,7 @@ export function EquipmentDetail({ publicId }: { publicId: string }) {
   }
 
   return (
-    <article className="card">
+    <article aria-busy={saving} className="card">
       <p className="eyebrow">{equipment.assetId}</p>
       <h2>{equipment.name}</h2>
       <p>
@@ -174,7 +178,11 @@ export function EquipmentDetail({ publicId }: { publicId: string }) {
           </button>
         </form>
       ) : null}
-      {message ? <p role="status">{message}</p> : null}
+      {message ? (
+        <p aria-live="polite" role="status">
+          {message}
+        </p>
+      ) : null}
       {canManage && !equipment.archivedAt ? (
         <p>
           <a className="button" href={`/api/equipment/${equipment.publicId}/qr`} download>

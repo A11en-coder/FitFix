@@ -39,7 +39,7 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
   }
 
   return (
-    <form className="card onboarding-form" onSubmit={submit}>
+    <form aria-busy={submitting} className="card onboarding-form" onSubmit={submit}>
       <label>
         Gym name
         <input
@@ -60,8 +60,12 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
           maxLength={80}
         />
       </label>
-      {error ? <p role="alert">{error}</p> : null}
-      <button className="button button--accent" disabled={submitting}>
+      {error ? (
+        <p aria-live="assertive" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <button className="button button--accent" disabled={submitting} type="submit">
         {submitting ? "Creating…" : "Create workspace"}
       </button>
     </form>

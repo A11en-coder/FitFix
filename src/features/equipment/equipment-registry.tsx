@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 
 type EquipmentItem = {
   id: string;
@@ -26,9 +27,16 @@ export function EquipmentRegistry() {
   const [canManage, setCanManage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [filtersReady, setFiltersReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<EquipmentItem | null>(null);
 
   const load = useCallback(
     async (cursor?: string, append = false) => {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      setMessage(null);
       const params = new URLSearchParams();
       if (query) params.set("q", query);
       if (category) params.set("category", category);
@@ -37,15 +45,22 @@ export function EquipmentRegistry() {
       if (includeArchived) params.set("includeArchived", "true");
       if (cursor) params.set("cursor", cursor);
       const queryString = params.toString();
-      const response = await fetch(`/api/equipment${queryString ? `?${queryString}` : ""}`);
-      if (!response.ok) {
-        setMessage("Equipment could not be loaded.");
-        return;
+      try {
+        const response = await fetch(`/api/equipment${queryString ? `?${queryString}` : ""}`);
+        if (!response.ok) {
+          setMessage("Equipment could not be loaded.");
+          return;
+        }
+        const body = await response.json();
+        setItems((current) => (append ? [...current, ...body.items] : body.items));
+        setNextCursor(body.nextCursor);
+        setCanManage(body.canManage);
+      } catch {
+        setMessage("Equipment could not be loaded. Check your connection and retry.");
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-      const body = await response.json();
-      setItems((current) => (append ? [...current, ...body.items] : body.items));
-      setNextCursor(body.nextCursor);
-      setCanManage(body.canManage);
     },
     [category, includeArchived, location, query, status],
   );
@@ -64,53 +79,73 @@ export function EquipmentRegistry() {
     if (filtersReady) void load();
   }, [filtersReady, load]);
 
-  async function archive(item: EquipmentItem) {
-    if (!window.confirm(`Archive ${item.name} (${item.assetId})?`)) return;
-    const response = await fetch(`/api/equipment/${item.publicId}/archive`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ version: item.version }),
-    });
-    const body = await response.json().catch(() => null);
-    setMessage(
-      response.ok ? "Equipment archived." : (body?.message ?? "Equipment could not be archived."),
-    );
-    if (response.ok) await load();
+  function archive(item: EquipmentItem) {
+    setArchiveTarget(item);
+  }
+
+  async function confirmArchive() {
+    if (!archiveTarget) return;
+    const item = archiveTarget;
+    setArchiving(true);
+    try {
+      const response = await fetch(`/api/equipment/${item.publicId}/archive`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ version: item.version }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        setMessage(body?.message ?? "Equipment could not be archived.");
+        return;
+      }
+      setArchiveTarget(null);
+      await load();
+      setMessage("Equipment archived.");
+    } catch {
+      setMessage("Equipment could not be archived. Check your connection and retry.");
+    } finally {
+      setArchiving(false);
+    }
   }
 
   return (
-    <section>
-      <div className="equipment-toolbar">
-        <input
-          aria-label="Search equipment"
-          placeholder="Search by name or asset ID"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <input
-          aria-label="Filter equipment by category"
-          placeholder="Category"
-          value={category}
-          onChange={(event) => setCategory(event.target.value)}
-        />
-        <input
-          aria-label="Filter equipment by location"
-          placeholder="Location"
-          value={location}
-          onChange={(event) => setLocation(event.target.value)}
-        />
-        <select
-          aria-label="Filter equipment by status"
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-        >
-          <option value="">All statuses</option>
-          <option value="AVAILABLE">Available</option>
-          <option value="LIMITED">Limited</option>
-          <option value="OUT_OF_SERVICE">Out of service</option>
-          <option value="ARCHIVED">Archived</option>
-        </select>
+    <section aria-busy={loading}>
+      <div aria-label="Equipment filters" className="filter-bar" role="group">
         <label>
+          <span>Search equipment</span>
+          <input
+            placeholder="Name or asset ID"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Category</span>
+          <input
+            placeholder="Any category"
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Location</span>
+          <input
+            placeholder="Any location"
+            value={location}
+            onChange={(event) => setLocation(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Status</span>
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">All statuses</option>
+            <option value="AVAILABLE">Available</option>
+            <option value="LIMITED">Limited</option>
+            <option value="OUT_OF_SERVICE">Out of service</option>
+            <option value="ARCHIVED">Archived</option>
+          </select>
+        </label>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={includeArchived}
@@ -124,7 +159,16 @@ export function EquipmentRegistry() {
           </Link>
         ) : null}
       </div>
-      {message ? <p role="status">{message}</p> : null}
+      {loading ? (
+        <p className="async-state" role="status">
+          Loading equipment…
+        </p>
+      ) : null}
+      {message ? (
+        <p aria-live="assertive" role="alert">
+          {message}
+        </p>
+      ) : null}
       <div className="grid">
         {items.map((item) => (
           <article className="card" key={item.id}>
@@ -139,7 +183,7 @@ export function EquipmentRegistry() {
                 View details
               </Link>
               {canManage && !item.archivedAt ? (
-                <button className="button" onClick={() => void archive(item)}>
+                <button className="button" onClick={() => archive(item)} type="button">
                   Archive
                 </button>
               ) : null}
@@ -147,16 +191,34 @@ export function EquipmentRegistry() {
           </article>
         ))}
       </div>
-      {items.length === 0 ? (
+      {!loading && items.length === 0 && !message ? (
         <div className="card">
           <p>No equipment matches these filters.</p>
         </div>
       ) : null}
       {nextCursor ? (
-        <button className="button" onClick={() => void load(nextCursor, true)}>
-          Load more
+        <button
+          className="button"
+          disabled={loadingMore}
+          onClick={() => void load(nextCursor, true)}
+          type="button"
+        >
+          {loadingMore ? "Loading more…" : "Load more"}
         </button>
       ) : null}
+      <ConfirmDialog
+        busy={archiving}
+        confirmLabel="Archive equipment"
+        description={
+          archiveTarget
+            ? `Archive ${archiveTarget.name} (${archiveTarget.assetId})? Its history will remain available, but it will no longer appear in the active equipment list.`
+            : ""
+        }
+        onCancel={() => setArchiveTarget(null)}
+        onConfirm={() => void confirmArchive()}
+        open={Boolean(archiveTarget)}
+        title="Archive equipment?"
+      />
     </section>
   );
 }

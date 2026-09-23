@@ -37,17 +37,21 @@ export function FaultReview({ reference }: { reference: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [staff, setStaff] = useState<Array<{ id: string; name: string }>>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void fetch(`/api/faults/${reference}`).then(async (response) => {
-      const body = await response.json();
-      if (response.ok) setFault(body.fault);
-      else setMessage(body.message ?? "Fault could not be loaded.");
-    });
+    void fetch(`/api/faults/${reference}`)
+      .then(async (response) => {
+        const body = await response.json();
+        if (response.ok) setFault(body.fault);
+        else setMessage(body.message ?? "Fault could not be loaded.");
+      })
+      .catch(() => setMessage("Fault could not be loaded. Check your connection and retry."))
+      .finally(() => setLoading(false));
   }, [reference]);
 
   if (message) return <p role="alert">{message}</p>;
-  if (!fault) return <p>Loading fault…</p>;
+  if (loading || !fault) return <p role="status">Loading fault…</p>;
 
   async function review(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -176,7 +180,7 @@ export function FaultReview({ reference }: { reference: string }) {
   }
 
   return (
-    <article>
+    <article aria-busy={saving}>
       <p className="eyebrow">
         {fault.reference} · {fault.triageState}
       </p>
@@ -302,6 +306,7 @@ export function FaultReview({ reference }: { reference: string }) {
             className="button button--accent"
             disabled={saving}
             onClick={() => void transition("start", {})}
+            type="button"
           >
             {saving ? "Saving…" : "Start repair"}
           </button>
@@ -372,7 +377,11 @@ export function FaultReview({ reference }: { reference: string }) {
           </p>
         ))}
       </section>
-      {message ? <p role="status">{message}</p> : null}
+      {message ? (
+        <p aria-live="assertive" role="alert">
+          {message}
+        </p>
+      ) : null}
     </article>
   );
 }

@@ -34,7 +34,7 @@ export function EquipmentForm() {
   }
 
   return (
-    <form className="card equipment-form" onSubmit={submit}>
+    <form aria-busy={saving} className="card equipment-form" onSubmit={submit}>
       <label>
         Asset ID
         <input
@@ -79,8 +79,12 @@ export function EquipmentForm() {
           maxLength={5000}
         />
       </label>
-      {message ? <p role="alert">{message}</p> : null}
-      <button className="button button--accent" disabled={saving}>
+      {message ? (
+        <p aria-live="assertive" role="alert">
+          {message}
+        </p>
+      ) : null}
+      <button className="button button--accent" disabled={saving} type="submit">
         {saving ? "Saving…" : "Create equipment"}
       </button>
     </form>

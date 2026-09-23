@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 
 type StaffResponse = {
   members: Array<{
@@ -18,12 +19,24 @@ export function StaffManagement() {
   const [message, setMessage] = useState<string | null>(null);
   const [invitationKey, setInvitationKey] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [deactivating, setDeactivating] = useState(false);
+  const [deactivationTarget, setDeactivationTarget] = useState<
+    StaffResponse["members"][number] | null
+  >(null);
 
   // This function loads the list of staff members and pending invitations from the server. It sends a GET request to the /api/staff endpoint and updates the component state with the retrieved data or an error message if the request fails.
   async function load() {
-    const response = await fetch("/api/staff");
-    if (response.ok) setData(await response.json());
-    else setMessage("Staff could not be loaded.");
+    setLoading(true);
+    try {
+      const response = await fetch("/api/staff");
+      if (response.ok) setData(await response.json());
+      else setMessage("Staff could not be loaded.");
+    } catch {
+      setMessage("Staff could not be loaded. Check your connection and retry.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -61,13 +74,23 @@ export function StaffManagement() {
 
   // This function deactivates a staff member by sending a POST request to the server.
   async function deactivate(memberId: string) {
-    const response = await fetch(`/api/staff/${memberId}/deactivate`, { method: "POST" });
-    setMessage(
-      response.ok
-        ? "Staff access deactivated."
-        : ((await response.json()).message ?? "Deactivation failed."),
-    );
-    if (response.ok) await load();
+    setDeactivating(true);
+    try {
+      const response = await fetch(`/api/staff/${memberId}/deactivate`, { method: "POST" });
+      setMessage(
+        response.ok
+          ? "Staff access deactivated."
+          : ((await response.json()).message ?? "Deactivation failed."),
+      );
+      if (response.ok) {
+        setDeactivationTarget(null);
+        await load();
+      }
+    } catch {
+      setMessage("Deactivation failed. Check your connection and retry.");
+    } finally {
+      setDeactivating(false);
+    }
   }
 
   // This function changes the role of a staff member by sending a PATCH request to the server with the new role.
@@ -84,7 +107,7 @@ export function StaffManagement() {
   }
 
   return (
-    <section className="staff-management">
+    <section aria-busy={loading || inviting || deactivating} className="staff-management">
       <form className="card onboarding-form" onSubmit={invite} aria-busy={inviting}>
         <label>
           Invite staff by email
@@ -103,7 +126,16 @@ export function StaffManagement() {
           {inviting ? "Sending…" : "Send invitation"}
         </button>
       </form>
-      {message ? <p role="status">{message}</p> : null}
+      {loading ? (
+        <p className="async-state" role="status">
+          Loading staff…
+        </p>
+      ) : null}
+      {message ? (
+        <p aria-live="assertive" role="alert">
+          {message}
+        </p>
+      ) : null}
       <div className="grid">
         {data?.members.map((member) => (
           <article className="card" key={member.id}>
@@ -124,7 +156,11 @@ export function StaffManagement() {
                     <option value="MANAGER">Manager</option>
                   </select>
                 </label>
-                <button className="button" onClick={() => void deactivate(member.id)}>
+                <button
+                  className="button button--danger"
+                  onClick={() => setDeactivationTarget(member)}
+                  type="button"
+                >
                   Deactivate
                 </button>
               </>
@@ -132,7 +168,7 @@ export function StaffManagement() {
           </article>
         ))}
       </div>
-      {data?.invitations.length ? (
+      {!loading && data?.invitations.length ? (
         <div className="card">
           <h2>Pending invitations</h2>
           {data.invitations.map((invitation) => (
@@ -142,6 +178,21 @@ export function StaffManagement() {
           ))}
         </div>
       ) : null}
+      <ConfirmDialog
+        busy={deactivating}
+        confirmLabel="Deactivate access"
+        description={
+          deactivationTarget
+            ? `Deactivate ${deactivationTarget.user.displayName} (${deactivationTarget.user.email})? They will no longer be able to access this gym.`
+            : ""
+        }
+        onCancel={() => setDeactivationTarget(null)}
+        onConfirm={() => {
+          if (deactivationTarget) void deactivate(deactivationTarget.id);
+        }}
+        open={Boolean(deactivationTarget)}
+        title="Deactivate staff access?"
+      />
     </section>
   );
 }

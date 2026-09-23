@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 
 type DraftMedia = {
   id: string;
@@ -60,6 +61,9 @@ export function FaultDraftForm({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [missingFields, setMissingFields] = useState<Array<keyof FormState>>([]);
   const [submittedReference, setSubmittedReference] = useState<string | null>(null);
   const submissionKey = useRef<string | null>(null);
 
@@ -89,7 +93,16 @@ export function FaultDraftForm({
   }, [draftId, equipmentPublicId]);
 
   function updateField(field: keyof FormState, value: string) {
+    setMissingFields((current) => current.filter((name) => name !== field));
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function focusField(field: keyof FormState) {
+    document
+      .querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+        `[name="${field}"]`,
+      )
+      ?.focus();
   }
 
   async function persistDraft(existingDraft: Draft | null = draft) {
@@ -137,16 +150,21 @@ export function FaultDraftForm({
   }
 
   async function submitFault() {
-    const missing = [
-      !form.equipmentPublicId && "equipment",
-      !form.title && "title",
-      !form.description && "description",
-      !form.severity && "severity",
-      !form.equipmentStatus && "equipment status",
-      !form.discoveredAt && "discovery time",
-    ].filter(Boolean);
+    const requiredFields: Array<{ key: keyof FormState; label: string }> = [
+      { key: "equipmentPublicId", label: "equipment" },
+      { key: "title", label: "title" },
+      { key: "description", label: "description" },
+      { key: "severity", label: "severity" },
+      { key: "equipmentStatus", label: "equipment status" },
+      { key: "discoveredAt", label: "discovery time" },
+    ];
+    const missing = requiredFields.filter(({ key }) => !form[key]);
     if (missing.length) {
-      setMessage(`Complete the following before submitting: ${missing.join(", ")}.`);
+      setMissingFields(missing.map(({ key }) => key));
+      setMessage(
+        `Complete the following before submitting: ${missing.map(({ label }) => label).join(", ")}.`,
+      );
+      focusField(missing[0].key);
       return;
     }
 
@@ -259,14 +277,21 @@ export function FaultDraftForm({
   }
 
   async function discard() {
-    if (!draft || !window.confirm("Discard this fault draft?")) return;
-    const response = await fetch(`/api/fault-drafts/${draft.id}`, { method: "DELETE" });
-    if (response.ok) {
-      window.localStorage.removeItem(
-        `fitfix:fault-draft:${form.equipmentPublicId || "unassigned"}`,
-      );
-      router.push(form.equipmentPublicId ? `/equipment/${form.equipmentPublicId}` : "/equipment");
-    } else setMessage("The draft could not be discarded.");
+    if (!draft) return;
+    setDiscarding(true);
+    try {
+      const response = await fetch(`/api/fault-drafts/${draft.id}`, { method: "DELETE" });
+      if (response.ok) {
+        window.localStorage.removeItem(
+          `fitfix:fault-draft:${form.equipmentPublicId || "unassigned"}`,
+        );
+        router.push(form.equipmentPublicId ? `/equipment/${form.equipmentPublicId}` : "/equipment");
+      } else setMessage("The draft could not be discarded.");
+    } catch {
+      setMessage("The draft could not be discarded. Check your connection and retry.");
+    } finally {
+      setDiscarding(false);
+    }
   }
 
   if (submittedReference)
@@ -287,10 +312,15 @@ export function FaultDraftForm({
     );
 
   return (
-    <form className="equipment-form" onSubmit={(event) => void save(event)}>
+    <form
+      aria-busy={saving || uploading || submitting || discarding}
+      className="equipment-form"
+      onSubmit={(event) => void save(event)}
+    >
       <label>
         Equipment public ID
         <input
+          name="equipmentPublicId"
           value={form.equipmentPublicId}
           onChange={(event) => updateField("equipmentPublicId", event.target.value)}
           maxLength={26}
@@ -300,6 +330,7 @@ export function FaultDraftForm({
       <label>
         Title
         <input
+          name="title"
           value={form.title}
           onChange={(event) => updateField("title", event.target.value)}
           maxLength={160}
@@ -308,6 +339,7 @@ export function FaultDraftForm({
       <label>
         Description
         <textarea
+          name="description"
           value={form.description}
           onChange={(event) => updateField("description", event.target.value)}
           maxLength={10000}
@@ -316,6 +348,7 @@ export function FaultDraftForm({
       <label>
         Severity
         <select
+          name="severity"
           value={form.severity}
           onChange={(event) => updateField("severity", event.target.value)}
         >
@@ -329,6 +362,7 @@ export function FaultDraftForm({
       <label>
         Equipment status
         <select
+          name="equipmentStatus"
           value={form.equipmentStatus}
           onChange={(event) => updateField("equipmentStatus", event.target.value)}
         >
@@ -341,6 +375,7 @@ export function FaultDraftForm({
       <label>
         Immediate action
         <textarea
+          name="immediateAction"
           value={form.immediateAction}
           onChange={(event) => updateField("immediateAction", event.target.value)}
           maxLength={5000}
@@ -349,6 +384,7 @@ export function FaultDraftForm({
       <label>
         Discovered at
         <input
+          name="discoveredAt"
           type="datetime-local"
           value={form.discoveredAt}
           onChange={(event) => updateField("discoveredAt", event.target.value)}
@@ -357,6 +393,7 @@ export function FaultDraftForm({
       <label>
         Photos (up to five, 10 MB each)
         <input
+          name="photos"
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
@@ -391,14 +428,50 @@ export function FaultDraftForm({
           <button
             className="button button-secondary"
             type="button"
-            onClick={() => void discard()}
-            disabled={saving || uploading || submitting}
+            onClick={() => setDiscardOpen(true)}
+            disabled={saving || uploading || submitting || discarding}
           >
-            Discard draft
+            {discarding ? "Discarding…" : "Discard draft"}
           </button>
         ) : null}
       </div>
-      {message ? <p role="status">{message}</p> : null}
+      {missingFields.length ? (
+        <div aria-live="assertive" className="error-summary" role="alert" tabIndex={-1}>
+          <p>Complete the required fields before submitting:</p>
+          <ul>
+            {missingFields.map((field) => (
+              <li key={field}>
+                <button className="link-button" onClick={() => focusField(field)} type="button">
+                  {field === "equipmentPublicId"
+                    ? "Equipment"
+                    : field === "equipmentStatus"
+                      ? "Equipment status"
+                      : field === "discoveredAt"
+                        ? "Discovery time"
+                        : field.charAt(0).toUpperCase() + field.slice(1)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {message ? (
+        <p aria-live="polite" role="status">
+          {message}
+        </p>
+      ) : null}
+      <ConfirmDialog
+        busy={discarding}
+        confirmLabel="Discard draft"
+        description="Discard this saved fault draft? Its entered details and attached photos will no longer be available in FitFix."
+        onCancel={() => setDiscardOpen(false)}
+        onConfirm={() => {
+          setDiscardOpen(false);
+          void discard();
+        }}
+        open={discardOpen}
+        title="Discard fault draft?"
+      />
     </form>
   );
 }

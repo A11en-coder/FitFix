@@ -356,7 +356,7 @@ export function Dashboard() {
   }
 
   return (
-    <section className="dashboard-shell">
+    <section aria-busy={loading} className="dashboard-shell">
       <form className="dashboard-toolbar" onSubmit={submitRange}>
         <label>
           From
@@ -370,8 +370,8 @@ export function Dashboard() {
           To
           <input type="date" value={toInput} onChange={(event) => setToInput(event.target.value)} />
         </label>
-        <button className="button button--accent" type="submit">
-          Update dashboard
+        <button className="button button--accent" disabled={loading} type="submit">
+          {loading ? "Updating…" : "Update dashboard"}
         </button>
         <Link className="button" href="/faults/new">
           Report a fault
@@ -381,7 +381,11 @@ export function Dashboard() {
         </Link>
       </form>
       {loading ? <p role="status">Loading dashboard…</p> : null}
-      {message ? <p role="alert">{message}</p> : null}
+      {message ? (
+        <p aria-live="assertive" role="alert">
+          {message}
+        </p>
+      ) : null}
       {!loading && dashboard?.role === "MANAGER" ? <ManagerView dashboard={dashboard} /> : null}
       {!loading && dashboard?.role === "STAFF" ? <StaffView dashboard={dashboard} /> : null}
     </section>

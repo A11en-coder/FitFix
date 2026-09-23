@@ -90,8 +90,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           code: "VALIDATION_ERROR",
-          message:
-            fieldErrors.discoveredAt?.[0] ?? "Please complete the required fault details.",
+          message: fieldErrors.discoveredAt?.[0] ?? "Please complete the required fault details.",
           fieldErrors,
           requestId: requestContext.requestId,
         },

@@ -25,9 +25,14 @@ export function FaultRegistry() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [filtersReady, setFiltersReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(
     async (cursor?: string, append = false) => {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      setMessage(null);
       const params = new URLSearchParams();
       if (query) params.set("q", query);
       if (status) params.set("status", status);
@@ -40,13 +45,19 @@ export function FaultRegistry() {
       if (reportedByMe) params.set("reportedByMe", "true");
       if (cursor) params.set("cursor", cursor);
       const queryString = params.toString();
-      const response = await fetch(`/api/faults${queryString ? `?${queryString}` : ""}`);
-      const body = await response.json();
-      if (response.ok) {
-        setItems((current) => (append ? [...current, ...body.items] : body.items));
-        setNextCursor(body.nextCursor);
-        setMessage(null);
-      } else setMessage(body.message ?? "Faults could not be loaded.");
+      try {
+        const response = await fetch(`/api/faults${queryString ? `?${queryString}` : ""}`);
+        const body = await response.json();
+        if (response.ok) {
+          setItems((current) => (append ? [...current, ...body.items] : body.items));
+          setNextCursor(body.nextCursor);
+        } else setMessage(body.message ?? "Faults could not be loaded.");
+      } catch {
+        setMessage("Faults could not be loaded. Check your connection and retry.");
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     },
     [
       active,
@@ -80,46 +91,48 @@ export function FaultRegistry() {
   }, [filtersReady, load]);
 
   return (
-    <section>
-      <div className="equipment-toolbar">
+    <section aria-busy={loading}>
+      <div aria-label="Fault filters" className="filter-bar" role="group">
         <p>Reported faults are retained as a historical record.</p>
-        <input
-          aria-label="Search faults"
-          placeholder="Search reference, title, equipment"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <select
-          aria-label="Filter faults by status"
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-        >
-          <option value="">All statuses</option>
-          <option value="REPORTED">Reported</option>
-          <option value="UNDER_REVIEW">Under review</option>
-          <option value="ASSIGNED">Assigned</option>
-          <option value="IN_PROGRESS">In progress</option>
-          <option value="RESOLVED">Resolved</option>
-          <option value="CLOSED">Closed</option>
-        </select>
-        <select
-          aria-label="Filter faults by severity"
-          value={severity}
-          onChange={(event) => setSeverity(event.target.value)}
-        >
-          <option value="">All severities</option>
-          <option value="LOW">Low</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="HIGH">High</option>
-          <option value="CRITICAL">Critical</option>
-        </select>
-        <input
-          aria-label="Filter faults by equipment ID"
-          placeholder="Equipment public ID"
-          value={equipmentPublicId}
-          onChange={(event) => setEquipmentPublicId(event.target.value)}
-        />
         <label>
+          <span>Search faults</span>
+          <input
+            placeholder="Reference, title, equipment"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Status</span>
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">All statuses</option>
+            <option value="REPORTED">Reported</option>
+            <option value="UNDER_REVIEW">Under review</option>
+            <option value="ASSIGNED">Assigned</option>
+            <option value="IN_PROGRESS">In progress</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="CLOSED">Closed</option>
+          </select>
+        </label>
+        <label>
+          <span>Severity</span>
+          <select value={severity} onChange={(event) => setSeverity(event.target.value)}>
+            <option value="">All severities</option>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+        </label>
+        <label>
+          <span>Equipment public ID</span>
+          <input
+            placeholder="Public ID"
+            value={equipmentPublicId}
+            onChange={(event) => setEquipmentPublicId(event.target.value)}
+          />
+        </label>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={active}
@@ -127,7 +140,7 @@ export function FaultRegistry() {
           />
           Active only
         </label>
-        <label>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={highSeverity}
@@ -135,7 +148,7 @@ export function FaultRegistry() {
           />
           High severity
         </label>
-        <label>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={overdue}
@@ -143,7 +156,7 @@ export function FaultRegistry() {
           />
           Overdue
         </label>
-        <label>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={assignedToMe}
@@ -151,7 +164,7 @@ export function FaultRegistry() {
           />
           Assigned to me
         </label>
-        <label>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={reportedByMe}
@@ -163,7 +176,16 @@ export function FaultRegistry() {
           Report a fault
         </Link>
       </div>
-      {message ? <p role="alert">{message}</p> : null}
+      {loading ? (
+        <p className="async-state" role="status">
+          Loading faults…
+        </p>
+      ) : null}
+      {message ? (
+        <p aria-live="assertive" role="alert">
+          {message}
+        </p>
+      ) : null}
       <div className="grid">
         {items.map((item) => (
           <article className="card" key={item.reference}>
@@ -181,14 +203,19 @@ export function FaultRegistry() {
           </article>
         ))}
       </div>
-      {items.length === 0 && !message ? (
+      {!loading && items.length === 0 && !message ? (
         <div className="card">
           <p>No faults are waiting for review.</p>
         </div>
       ) : null}
       {nextCursor ? (
-        <button className="button" onClick={() => void load(nextCursor, true)}>
-          Load more
+        <button
+          className="button"
+          disabled={loadingMore}
+          onClick={() => void load(nextCursor, true)}
+          type="button"
+        >
+          {loadingMore ? "Loading more…" : "Load more"}
         </button>
       ) : null}
     </section>
