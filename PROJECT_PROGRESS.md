@@ -7,7 +7,7 @@
 - **Current phase:** Phase 4 — Fault intake
 - **Current capability:** Fault submission
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** Pending checkpoint for fault submission
+- **Last capability commit:** `13df104 feat: add fault submission workflow`
 
 ## Completed capabilities
 
