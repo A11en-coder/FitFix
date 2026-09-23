@@ -14,7 +14,44 @@ type Equipment = {
   currentStatus: string;
   version: number;
   archivedAt: string | null;
+  statusIntervals: Array<{
+    status: string;
+    startedAt: string;
+    endedAt: string | null;
+    sourceFaultId: string | null;
+  }>;
+  faults: Array<{
+    reference: string;
+    title: string;
+    severity: string;
+    status: string;
+    repairCost: string | null;
+    resolvedAt: string | null;
+    closedAt: string | null;
+    createdAt: string;
+  }>;
+  historySummary: {
+    faultCount: number;
+    activeFaultCount: number;
+    totalDowntimeSeconds: number;
+    totalRepairCost: string;
+  };
 };
+
+function formatDuration(seconds: number) {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return (
+    [days ? `${days}d` : null, hours ? `${hours}h` : null, minutes ? `${minutes}m` : null]
+      .filter(Boolean)
+      .join(" ") || "0m"
+  );
+}
+
+function formatDate(value: string | null) {
+  return value ? new Date(value).toLocaleString() : "Present";
+}
 
 export function EquipmentDetail({ publicId }: { publicId: string }) {
   const [equipment, setEquipment] = useState<Equipment | null>(null);
@@ -73,6 +110,25 @@ export function EquipmentDetail({ publicId }: { publicId: string }) {
       </p>
       <p>Status: {equipment.currentStatus}</p>
       {equipment.description ? <p>{equipment.description}</p> : null}
+      <div className="grid">
+        <section className="card">
+          <h2>History summary</h2>
+          <p>Total faults: {equipment.historySummary.faultCount}</p>
+          <p>Active faults: {equipment.historySummary.activeFaultCount}</p>
+          <p>
+            Out-of-service time: {formatDuration(equipment.historySummary.totalDowntimeSeconds)}
+          </p>
+          <p>Total repair cost: {equipment.historySummary.totalRepairCost}</p>
+        </section>
+        <section className="card">
+          <h2>Status history</h2>
+          {equipment.statusIntervals.map((interval) => (
+            <p key={`${interval.startedAt}-${interval.status}`}>
+              {interval.status}: {formatDate(interval.startedAt)} – {formatDate(interval.endedAt)}
+            </p>
+          ))}
+        </section>
+      </div>
       {canManage && !equipment.archivedAt ? (
         <form className="stack-form" onSubmit={save}>
           <label>
@@ -133,6 +189,24 @@ export function EquipmentDetail({ publicId }: { publicId: string }) {
           </a>
         </p>
       ) : null}
+      <section className="card">
+        <h2>Fault history</h2>
+        {equipment.faults.length ? (
+          equipment.faults.map((fault) => (
+            <article key={fault.reference}>
+              <p className="eyebrow">{fault.reference}</p>
+              <h3>{fault.title}</h3>
+              <p>
+                {fault.severity} · {fault.status} · Reported {formatDate(fault.createdAt)}
+              </p>
+              <p>Repair cost: {fault.repairCost ?? "Not recorded"}</p>
+              <a href={`/faults/${fault.reference}`}>Open fault report</a>
+            </article>
+          ))
+        ) : (
+          <p>No fault history recorded.</p>
+        )}
+      </section>
     </article>
   );
 }

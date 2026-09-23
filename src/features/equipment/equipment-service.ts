@@ -11,6 +11,23 @@ import type {
 
 type DbClient = typeof db;
 
+const equipmentHistoryInclude = {
+  statusIntervals: { orderBy: { startedAt: "asc" as const } },
+  faults: {
+    orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }],
+    select: {
+      publicReference: true,
+      title: true,
+      severity: true,
+      status: true,
+      repairCost: true,
+      resolvedAt: true,
+      closedAt: true,
+      createdAt: true,
+    },
+  },
+} satisfies Prisma.EquipmentInclude;
+
 export class EquipmentNotFoundError extends Error {
   constructor() {
     super("Equipment not found.");
@@ -30,6 +47,12 @@ export async function listEquipment(
   input: EquipmentSearchInput,
   database: DbClient = db,
 ) {
+  const statusFilter =
+    input.status === "ARCHIVED"
+      ? { archivedAt: { not: null } }
+      : input.status
+        ? { currentStatus: input.status as EquipmentStatus }
+        : {};
   const where: Prisma.EquipmentWhereInput = {
     gymId: membership.gymId,
     ...(input.q
@@ -42,8 +65,8 @@ export async function listEquipment(
       : {}),
     ...(input.category ? { category: { equals: input.category, mode: "insensitive" } } : {}),
     ...(input.location ? { location: { equals: input.location, mode: "insensitive" } } : {}),
-    ...(input.status ? { currentStatus: input.status as EquipmentStatus } : {}),
-    ...(!input.includeArchived && !input.status ? { archivedAt: null } : {}),
+    ...statusFilter,
+    ...(input.status !== "ARCHIVED" && !input.includeArchived ? { archivedAt: null } : {}),
   };
   const items = await database.equipment.findMany({
     where,
@@ -67,10 +90,62 @@ export async function getEquipment(
 ) {
   const equipment = await database.equipment.findFirst({
     where: { publicId, gymId: membership.gymId },
-    include: { statusIntervals: { orderBy: { startedAt: "desc" }, take: 20 } },
+    include: equipmentHistoryInclude,
   });
   if (!equipment) throw new EquipmentNotFoundError();
-  return { equipment, canManage: membership.role === "MANAGER" };
+  return {
+    equipment: toEquipmentDetails(equipment),
+    canManage: membership.role === "MANAGER",
+  };
+}
+
+function toEquipmentDetails(
+  equipment: Prisma.EquipmentGetPayload<{ include: typeof equipmentHistoryInclude }>,
+) {
+  const now = Date.now();
+  const totalDowntimeSeconds = equipment.statusIntervals.reduce((total, interval) => {
+    if (interval.status !== EquipmentStatus.OUT_OF_SERVICE) return total;
+    const endedAt = interval.endedAt?.getTime() ?? now;
+    return total + Math.max(0, Math.floor((endedAt - interval.startedAt.getTime()) / 1000));
+  }, 0);
+  const totalRepairCost = equipment.faults
+    .reduce((total, fault) => total.plus(fault.repairCost ?? 0), new Prisma.Decimal(0))
+    .toFixed(2);
+
+  return {
+    id: equipment.id,
+    publicId: equipment.publicId,
+    assetId: equipment.assetId,
+    name: equipment.name,
+    category: equipment.category,
+    location: equipment.location,
+    description: equipment.description,
+    currentStatus: equipment.currentStatus,
+    version: equipment.version,
+    archivedAt: equipment.archivedAt,
+    statusIntervals: equipment.statusIntervals.map((interval) => ({
+      status: interval.status,
+      startedAt: interval.startedAt,
+      endedAt: interval.endedAt,
+      sourceFaultId: interval.sourceFaultId,
+    })),
+    faults: equipment.faults.map((fault) => ({
+      reference: fault.publicReference,
+      title: fault.title,
+      severity: fault.severity,
+      status: fault.status,
+      repairCost: fault.repairCost?.toFixed(2) ?? null,
+      resolvedAt: fault.resolvedAt,
+      closedAt: fault.closedAt,
+      createdAt: fault.createdAt,
+    })),
+    historySummary: {
+      faultCount: equipment.faults.length,
+      activeFaultCount: equipment.faults.filter((fault) => fault.status !== "CLOSED").length,
+      totalDowntimeSeconds,
+      totalRepairCost,
+    },
+  };
 }
 
 export async function getEquipmentQrTarget(

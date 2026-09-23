@@ -32,17 +32,9 @@ export async function GET(
     const membership = await findActiveMembership(userId);
     if (!membership) throw new AuthorizationError("An active gym membership is required.");
     const result = await getEquipment((await params).publicId, membership);
-    const { gymId: _gymId, statusIntervals, ...equipment } = result.equipment;
     return NextResponse.json({
       canManage: result.canManage,
-      equipment: {
-        ...equipment,
-        statusIntervals: statusIntervals.map(({ status, startedAt, endedAt }) => ({
-          status,
-          startedAt,
-          endedAt,
-        })),
-      },
+      equipment: result.equipment,
     });
   } catch (error) {
     return equipmentResponseError(error, requestContext.requestId);

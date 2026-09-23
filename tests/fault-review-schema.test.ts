@@ -26,8 +26,9 @@ test("fault review requires a positive version and supported values", () => {
 });
 
 test("fault list query applies a safe default limit", () => {
-  const result = faultListQuerySchema.parse({ status: "REPORTED" });
+  const result = faultListQuerySchema.parse({ q: "treadmill", status: "REPORTED" });
   assert.equal(result.limit, 25);
+  assert.equal(result.q, "treadmill");
   assert.equal(result.status, "REPORTED");
   assert.equal(faultListQuerySchema.safeParse({ limit: 101 }).success, false);
 });

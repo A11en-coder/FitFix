@@ -13,6 +13,7 @@ export const faultReviewSchema = z
 
 export const faultListQuerySchema = z
   .object({
+    q: z.string().trim().max(80).optional(),
     status: z
       .enum(["REPORTED", "UNDER_REVIEW", "ASSIGNED", "IN_PROGRESS", "RESOLVED", "CLOSED"])
       .optional(),

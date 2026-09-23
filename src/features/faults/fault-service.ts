@@ -209,6 +209,16 @@ export async function listFaults(
   const faults = await database.faultReport.findMany({
     where: {
       gymId: membership.gymId,
+      ...(input.q
+        ? {
+            OR: [
+              { publicReference: { contains: input.q, mode: "insensitive" } },
+              { title: { contains: input.q, mode: "insensitive" } },
+              { equipment: { is: { name: { contains: input.q, mode: "insensitive" } } } },
+              { equipment: { is: { assetId: { contains: input.q, mode: "insensitive" } } } },
+            ],
+          }
+        : {}),
       ...(input.status ? { status: input.status as FaultStatus } : {}),
       ...(input.severity ? { severity: input.severity as FaultSeverity } : {}),
       ...(equipment ? { equipmentId: equipment.id } : {}),

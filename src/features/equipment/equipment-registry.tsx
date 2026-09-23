@@ -18,19 +18,36 @@ type EquipmentItem = {
 export function EquipmentRegistry() {
   const [items, setItems] = useState<EquipmentItem[]>([]);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("");
+  const [location, setLocation] = useState("");
+  const [status, setStatus] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const response = await fetch(`/api/equipment${query ? `?q=${encodeURIComponent(query)}` : ""}`);
-    if (!response.ok) {
-      setMessage("Equipment could not be loaded.");
-      return;
-    }
-    const body = await response.json();
-    setItems(body.items);
-    setCanManage(body.canManage);
-  }, [query]);
+  const load = useCallback(
+    async (cursor?: string, append = false) => {
+      const params = new URLSearchParams();
+      if (query) params.set("q", query);
+      if (category) params.set("category", category);
+      if (location) params.set("location", location);
+      if (status) params.set("status", status);
+      if (includeArchived) params.set("includeArchived", "true");
+      if (cursor) params.set("cursor", cursor);
+      const queryString = params.toString();
+      const response = await fetch(`/api/equipment${queryString ? `?${queryString}` : ""}`);
+      if (!response.ok) {
+        setMessage("Equipment could not be loaded.");
+        return;
+      }
+      const body = await response.json();
+      setItems((current) => (append ? [...current, ...body.items] : body.items));
+      setNextCursor(body.nextCursor);
+      setCanManage(body.canManage);
+    },
+    [category, includeArchived, location, query, status],
+  );
 
   useEffect(() => {
     void load();
@@ -59,6 +76,37 @@ export function EquipmentRegistry() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
+        <input
+          aria-label="Filter equipment by category"
+          placeholder="Category"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+        />
+        <input
+          aria-label="Filter equipment by location"
+          placeholder="Location"
+          value={location}
+          onChange={(event) => setLocation(event.target.value)}
+        />
+        <select
+          aria-label="Filter equipment by status"
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+        >
+          <option value="">All statuses</option>
+          <option value="AVAILABLE">Available</option>
+          <option value="LIMITED">Limited</option>
+          <option value="OUT_OF_SERVICE">Out of service</option>
+          <option value="ARCHIVED">Archived</option>
+        </select>
+        <label>
+          <input
+            type="checkbox"
+            checked={includeArchived}
+            onChange={(event) => setIncludeArchived(event.target.checked)}
+          />
+          Include archived
+        </label>
         {canManage ? (
           <Link className="button button--accent" href="/equipment/new">
             Add equipment
@@ -90,8 +138,13 @@ export function EquipmentRegistry() {
       </div>
       {items.length === 0 ? (
         <div className="card">
-          <p>No active equipment matches this search.</p>
+          <p>No equipment matches these filters.</p>
         </div>
+      ) : null}
+      {nextCursor ? (
+        <button className="button" onClick={() => void load(nextCursor, true)}>
+          Load more
+        </button>
       ) : null}
     </section>
   );

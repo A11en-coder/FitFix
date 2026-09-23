@@ -4,10 +4,10 @@
 
 - **Assessment date:** 2026-09-24
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
-- **Current phase:** Phase 5 — Reactive-maintenance lifecycle
-- **Current capability:** Notifications and email delivery
-- **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** `4803ad8 feat: add notifications and reliable invitations`
+- **Current phase:** Phase 6 — Operational insight
+- **Current capability:** Manager and staff dashboards
+- **Approval state:** Capability 13 complete; next capability ready for Gate 1
+- **Last capability commit:** `feat: add equipment history and operational filters` (current `HEAD`)
 
 ## Completed capabilities
 
@@ -214,11 +214,33 @@ Implemented:
 
 Relevant requirements: PRD FR-16, US-03, US-04, US-05, and the transactional email integration requirement; TRD notification contracts, email outbox, Resend integration, webhook verification, retry handling, and tenant isolation.
 
+### 13. Equipment history, downtime, costs, search, and filters
+
+Implemented and Gate 2 approved; ready for Git checkpoint.
+
+Implemented:
+
+- Tenant-scoped equipment history on the equipment detail endpoint and page.
+- Chronological equipment status interval history.
+- Total out-of-service duration calculation, including currently open intervals.
+- Total repair-cost calculation across retained fault reports.
+- Fault history links and active-fault summary on equipment details.
+- Equipment search and filters for name/asset ID, category, location, status, and archived state.
+- Fault search by reference, title, equipment name, and asset ID.
+- Fault filters for lifecycle status, severity, and equipment public ID.
+- Cursor pagination and load-more controls for equipment and fault registries.
+- Correct archived-equipment semantics using `archivedAt` rather than the operational equipment status enum.
+- Validation coverage for the expanded fault list query.
+
+No schema migration was required; the existing status interval, fault lifecycle, repair-cost, and indexing foundations already supported this capability.
+
+Relevant requirements: PRD FR-13, FR-14, and FR-15; TRD equipment history, downtime and cost summaries, search/filter contracts, cursor pagination, TC-12, TC-13, and tenant isolation.
+
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 25 passed.
+- Unit tests: 27 passed.
 - ESLint: passed.
 - Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, manager-review, assignment, and lifecycle API routes are present.
 - Latest verification: 27 unit tests passed, typecheck passed, ESLint passed, production build passed, and invitation membership reconciliation was verified against Clerk webhook payloads.
@@ -260,7 +282,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 
 ### Phase 6 — Operational insight
 
-13. Equipment history, downtime, costs, search, and filters.
+13. Equipment history, downtime, costs, search, and filters — complete.
 14. Manager and staff dashboards.
 
 ### Phase 7 — Release readiness
@@ -273,4 +295,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-After the Git checkpoint, begin capability 13: equipment history, downtime, costs, search, and filters. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
+After the Git checkpoint, begin capability 14: manager and staff dashboards. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
