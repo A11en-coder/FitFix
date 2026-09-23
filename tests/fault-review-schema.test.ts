@@ -30,5 +30,7 @@ test("fault list query applies a safe default limit", () => {
   assert.equal(result.limit, 25);
   assert.equal(result.q, "treadmill");
   assert.equal(result.status, "REPORTED");
+  assert.equal(result.active, false);
+  assert.equal(result.assignedToMe, false);
   assert.equal(faultListQuerySchema.safeParse({ limit: 101 }).success, false);
 });

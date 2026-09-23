@@ -5,9 +5,9 @@
 - **Assessment date:** 2026-09-24
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
 - **Current phase:** Phase 6 — Operational insight
-- **Current capability:** Manager and staff dashboards
-- **Approval state:** Capability 13 complete; next capability ready for Gate 1
-- **Last capability commit:** `feat: add equipment history and operational filters` (current `HEAD`)
+- **Current capability:** Responsive and accessible product completion
+- **Approval state:** Capability 14 complete; next capability ready for Gate 1
+- **Last capability commit:** `feat: add manager and staff dashboards` (current `HEAD`)
 
 ## Completed capabilities
 
@@ -236,15 +236,36 @@ No schema migration was required; the existing status interval, fault lifecycle,
 
 Relevant requirements: PRD FR-13, FR-14, and FR-15; TRD equipment history, downtime and cost summaries, search/filter contracts, cursor pagination, TC-12, TC-13, and tenant isolation.
 
+### 14. Manager and staff dashboards
+
+Implemented and Gate 2 approved; ready for Git checkpoint.
+
+Implemented:
+
+- Role-aware `/dashboard` UI for managers and staff.
+- Tenant-scoped `GET /api/dashboard` endpoint with bounded date ranges.
+- Manager metrics for active faults, high severity, overdue repairs, and out-of-service equipment.
+- Manager priority queue with severity, triage, outage, and overdue scoring.
+- Manager availability breakdown, average resolution time, opened-versus-resolved trend, recurring equipment, and recent activity.
+- Staff metrics for assigned tasks, personal reports, and current outages.
+- Dashboard links into tenant-scoped equipment and fault filters.
+- Active, high-severity, overdue, assigned-to-me, and reported-by-me fault filters.
+- Responsive dashboard layout with loading, empty, and error states.
+- Additive dashboard indexes for target-date and assignee/status queries.
+- Dashboard date validation tests and expanded fault-filter coverage.
+
+Relevant requirements: PRD FR-17 and US-09; TRD role-specific dashboard aggregates, `GET /api/dashboard`, TC-15, tenant isolation, bounded analytics ranges, and dashboard query indexes.
+
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 27 passed.
+- Unit tests: 28 passed.
 - ESLint: passed.
 - Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, manager-review, assignment, and lifecycle API routes are present.
-- Latest verification: 27 unit tests passed, typecheck passed, ESLint passed, production build passed, and invitation membership reconciliation was verified against Clerk webhook payloads.
+- Latest verification: 28 unit tests passed, typecheck passed, ESLint passed, Prettier passed, production build passed, and the dashboard route/page compiled successfully.
 - Prisma schema validation with `.env.local`: passed.
+- Dashboard migration deployment: not applied; `prisma migrate dev --create-only` and `prisma migrate deploy` reached the configured Neon datasource but returned a generic Prisma schema-engine error. The reviewed migration file remains ready for retry.
 - Neon connectivity: read-only `SELECT 1` passed.
 - Migration application: complete. Neon migration `20260922235107_fault_submission` was created and applied after `20260922111937_fault_drafts_and_media`. A later status check could not reconnect to the configured Neon endpoint.
 - No live Clerk organization was created during verification.
@@ -283,7 +304,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 ### Phase 6 — Operational insight
 
 13. Equipment history, downtime, costs, search, and filters — complete.
-14. Manager and staff dashboards.
+14. Manager and staff dashboards — complete.
 
 ### Phase 7 — Release readiness
 
@@ -295,4 +316,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-After the Git checkpoint, begin capability 14: manager and staff dashboards. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
+After the Git checkpoint, begin capability 15: responsive and accessible product completion. The dashboard index migration should be applied to Neon when the Prisma schema engine can reconnect to the configured endpoint.

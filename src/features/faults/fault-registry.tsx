@@ -17,8 +17,14 @@ export function FaultRegistry() {
   const [status, setStatus] = useState("");
   const [severity, setSeverity] = useState("");
   const [equipmentPublicId, setEquipmentPublicId] = useState("");
+  const [active, setActive] = useState(false);
+  const [highSeverity, setHighSeverity] = useState(false);
+  const [overdue, setOverdue] = useState(false);
+  const [assignedToMe, setAssignedToMe] = useState(false);
+  const [reportedByMe, setReportedByMe] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [filtersReady, setFiltersReady] = useState(false);
 
   const load = useCallback(
     async (cursor?: string, append = false) => {
@@ -27,6 +33,11 @@ export function FaultRegistry() {
       if (status) params.set("status", status);
       if (severity) params.set("severity", severity);
       if (equipmentPublicId) params.set("equipmentPublicId", equipmentPublicId);
+      if (active) params.set("active", "true");
+      if (highSeverity) params.set("highSeverity", "true");
+      if (overdue) params.set("overdue", "true");
+      if (assignedToMe) params.set("assignedToMe", "true");
+      if (reportedByMe) params.set("reportedByMe", "true");
       if (cursor) params.set("cursor", cursor);
       const queryString = params.toString();
       const response = await fetch(`/api/faults${queryString ? `?${queryString}` : ""}`);
@@ -37,12 +48,36 @@ export function FaultRegistry() {
         setMessage(null);
       } else setMessage(body.message ?? "Faults could not be loaded.");
     },
-    [equipmentPublicId, query, severity, status],
+    [
+      active,
+      assignedToMe,
+      equipmentPublicId,
+      highSeverity,
+      overdue,
+      query,
+      reportedByMe,
+      severity,
+      status,
+    ],
   );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const params = new URLSearchParams(window.location.search);
+    setQuery(params.get("q") ?? "");
+    setStatus(params.get("status") ?? "");
+    setSeverity(params.get("severity") ?? "");
+    setEquipmentPublicId(params.get("equipmentPublicId") ?? "");
+    setActive(params.get("active") === "true");
+    setHighSeverity(params.get("highSeverity") === "true");
+    setOverdue(params.get("overdue") === "true");
+    setAssignedToMe(params.get("assignedToMe") === "true");
+    setReportedByMe(params.get("reportedByMe") === "true");
+    setFiltersReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (filtersReady) void load();
+  }, [filtersReady, load]);
 
   return (
     <section>
@@ -84,6 +119,46 @@ export function FaultRegistry() {
           value={equipmentPublicId}
           onChange={(event) => setEquipmentPublicId(event.target.value)}
         />
+        <label>
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={(event) => setActive(event.target.checked)}
+          />
+          Active only
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={highSeverity}
+            onChange={(event) => setHighSeverity(event.target.checked)}
+          />
+          High severity
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={overdue}
+            onChange={(event) => setOverdue(event.target.checked)}
+          />
+          Overdue
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={assignedToMe}
+            onChange={(event) => setAssignedToMe(event.target.checked)}
+          />
+          Assigned to me
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={reportedByMe}
+            onChange={(event) => setReportedByMe(event.target.checked)}
+          />
+          Reported by me
+        </label>
         <Link className="button button--accent" href="/faults/new">
           Report a fault
         </Link>

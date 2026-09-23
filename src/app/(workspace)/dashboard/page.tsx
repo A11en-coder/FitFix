@@ -1,5 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
-import Link from "next/link";
+import { Dashboard } from "../../../features/dashboard/dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -11,18 +11,8 @@ export default async function DashboardPage() {
     <main>
       <p className="eyebrow">Workspace</p>
       <h1>Welcome, {name}.</h1>
-      <p className="lede">Your gym workspace is ready for equipment, faults and team workflows.</p>
-      <p>
-        <a className="button button--accent" href="/onboarding">
-          Review gym setup
-        </a>
-        <Link className="button" href="/faults">
-          View faults
-        </Link>
-        <Link className="button" href="/notifications">
-          Notifications
-        </Link>
-      </p>
+      <p className="lede">Prioritize the maintenance work that needs attention today.</p>
+      <Dashboard />
     </main>
   );
 }

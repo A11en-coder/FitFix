@@ -100,6 +100,10 @@ function statusRank(status: EquipmentStatus) {
   return 0;
 }
 
+function startOfUtcDay(value = new Date()) {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+}
+
 // converts the Prisma result into the public response returned by the API
 function toFaultResult(fault: Prisma.FaultReportGetPayload<{ include: typeof faultInclude }>) {
   return {
@@ -198,6 +202,7 @@ export async function listFaults(
   input: FaultListQueryInput,
   database: DbClient = db,
 ) {
+  const listConditions: Prisma.FaultReportWhereInput[] = [];
   const equipment = input.equipmentPublicId
     ? await database.equipment.findFirst({
         where: { publicId: input.equipmentPublicId, gymId: membership.gymId },
@@ -205,6 +210,15 @@ export async function listFaults(
       })
     : null;
   if (input.equipmentPublicId && !equipment) throw new FaultNotFoundError();
+  if (input.status) listConditions.push({ status: input.status as FaultStatus });
+  if (input.active || input.highSeverity || input.overdue)
+    listConditions.push({ status: { not: FaultStatus.CLOSED } });
+  if (input.severity) listConditions.push({ severity: input.severity as FaultSeverity });
+  if (input.highSeverity)
+    listConditions.push({ severity: { in: [FaultSeverity.HIGH, FaultSeverity.CRITICAL] } });
+  if (input.overdue) listConditions.push({ targetDate: { not: null, lt: startOfUtcDay() } });
+  if (input.assignedToMe) listConditions.push({ assigneeMemberId: membership.id });
+  if (input.reportedByMe) listConditions.push({ reporterMemberId: membership.id });
 
   const faults = await database.faultReport.findMany({
     where: {
@@ -219,9 +233,8 @@ export async function listFaults(
             ],
           }
         : {}),
-      ...(input.status ? { status: input.status as FaultStatus } : {}),
-      ...(input.severity ? { severity: input.severity as FaultSeverity } : {}),
       ...(equipment ? { equipmentId: equipment.id } : {}),
+      ...(listConditions.length ? { AND: listConditions } : {}),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: input.limit + 1,

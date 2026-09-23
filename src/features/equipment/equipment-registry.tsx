@@ -25,6 +25,7 @@ export function EquipmentRegistry() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [filtersReady, setFiltersReady] = useState(false);
 
   const load = useCallback(
     async (cursor?: string, append = false) => {
@@ -50,8 +51,18 @@ export function EquipmentRegistry() {
   );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const params = new URLSearchParams(window.location.search);
+    setQuery(params.get("q") ?? "");
+    setCategory(params.get("category") ?? "");
+    setLocation(params.get("location") ?? "");
+    setStatus(params.get("status") ?? "");
+    setIncludeArchived(params.get("includeArchived") === "true");
+    setFiltersReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (filtersReady) void load();
+  }, [filtersReady, load]);
 
   async function archive(item: EquipmentItem) {
     if (!window.confirm(`Archive ${item.name} (${item.assetId})?`)) return;

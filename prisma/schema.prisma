@@ -292,8 +292,10 @@ model FaultReport {
 
   @@unique([gymId, idempotencyKey])
   @@index([gymId, status, severity])
+  @@index([gymId, targetDate])
   @@index([gymId, equipmentId, createdAt])
   @@index([gymId, reporterMemberId])
+  @@index([gymId, assigneeMemberId, status])
 }
 
 model Notification {
