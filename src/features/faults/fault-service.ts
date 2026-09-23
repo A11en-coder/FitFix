@@ -8,8 +8,9 @@ import {
   Prisma,
 } from "@prisma/client";
 import { db } from "../../server/db";
-import { AuthorizationError, type ActiveMembership } from "../auth/role-policy";
+import { AuthorizationError, assertManager, type ActiveMembership } from "../auth/role-policy";
 import type { FaultSubmissionInput } from "./submission-schema";
+import type { FaultListQueryInput, FaultReviewInput } from "./review-schema";
 
 type DbClient = typeof db;
 
@@ -20,6 +21,22 @@ const faultInclude = {
     where: { state: MediaState.ATTACHED },
     orderBy: { createdAt: "asc" as const },
     select: { id: true, secureUrl: true, mimeType: true, bytes: true, width: true, height: true },
+  },
+} satisfies Prisma.FaultReportInclude;
+
+const faultDetailsInclude = {
+  equipment: {
+    select: { publicId: true, assetId: true, name: true, location: true, currentStatus: true },
+  },
+  reporterMember: { select: { user: { select: { displayName: true } } } },
+  mediaAssets: {
+    where: { state: MediaState.ATTACHED },
+    orderBy: { createdAt: "asc" as const },
+    select: { id: true, secureUrl: true, mimeType: true, bytes: true, width: true, height: true },
+  },
+  updates: {
+    orderBy: { createdAt: "asc" as const },
+    include: { authorMember: { select: { user: { select: { displayName: true } } } } },
   },
 } satisfies Prisma.FaultReportInclude;
 
@@ -34,6 +51,20 @@ export class FaultSubmissionConflictError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "FaultSubmissionConflictError";
+  }
+}
+
+export class FaultNotFoundError extends Error {
+  constructor() {
+    super("Fault report not found.");
+    this.name = "FaultNotFoundError";
+  }
+}
+
+export class FaultReviewConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FaultReviewConflictError";
   }
 }
 
@@ -71,11 +102,213 @@ function toFaultResult(fault: Prisma.FaultReportGetPayload<{ include: typeof fau
   return {
     reference: fault.publicReference,
     status: fault.status,
-    triageState: fault.status === FaultStatus.REPORTED ? "NEEDS_TRIAGE" : "IN_PROGRESS",
+    triageState:
+      fault.status === FaultStatus.REPORTED
+        ? "NEEDS_TRIAGE"
+        : fault.status === FaultStatus.UNDER_REVIEW
+          ? "REVIEWED"
+          : "IN_PROGRESS",
     version: fault.version,
     equipment: fault.equipment,
     mediaAssets: fault.mediaAssets,
   };
+}
+
+function toFaultListItem(
+  fault: Prisma.FaultReportGetPayload<{
+    include: {
+      equipment: { select: { publicId: true; assetId: true; name: true; location: true } };
+    };
+  }>,
+) {
+  return {
+    reference: fault.publicReference,
+    title: fault.title,
+    severity: fault.severity,
+    status: fault.status,
+    reportedEquipmentStatus: fault.reportedEquipmentStatus,
+    discoveredAt: fault.discoveredAt,
+    createdAt: fault.createdAt,
+    version: fault.version,
+    equipment: fault.equipment,
+  };
+}
+
+function toFaultDetails(
+  fault: Prisma.FaultReportGetPayload<{ include: typeof faultDetailsInclude }>,
+  canReview: boolean,
+) {
+  return {
+    reference: fault.publicReference,
+    title: fault.title,
+    description: fault.description,
+    severity: fault.severity,
+    status: fault.status,
+    triageState:
+      fault.status === FaultStatus.REPORTED
+        ? "NEEDS_TRIAGE"
+        : fault.status === FaultStatus.UNDER_REVIEW
+          ? "REVIEWED"
+          : "IN_PROGRESS",
+    reportedEquipmentStatus: fault.reportedEquipmentStatus,
+    immediateAction: fault.immediateAction,
+    discoveredAt: fault.discoveredAt,
+    version: fault.version,
+    createdAt: fault.createdAt,
+    updatedAt: fault.updatedAt,
+    reporterName: fault.reporterMember.user.displayName,
+    equipment: fault.equipment,
+    mediaAssets: fault.mediaAssets,
+    updates: fault.updates.map((update) => ({
+      id: update.id,
+      type: update.type,
+      body: update.body,
+      metadata: update.metadata,
+      createdAt: update.createdAt,
+      authorName: update.authorMember?.user.displayName ?? "FitFix",
+    })),
+    permittedActions: canReview && fault.status === FaultStatus.REPORTED ? ["REVIEW"] : [],
+  };
+}
+
+export async function listFaults(
+  membership: ActiveMembership,
+  input: FaultListQueryInput,
+  database: DbClient = db,
+) {
+  const equipment = input.equipmentPublicId
+    ? await database.equipment.findFirst({
+        where: { publicId: input.equipmentPublicId, gymId: membership.gymId },
+        select: { id: true },
+      })
+    : null;
+  if (input.equipmentPublicId && !equipment) throw new FaultNotFoundError();
+
+  const faults = await database.faultReport.findMany({
+    where: {
+      gymId: membership.gymId,
+      ...(input.status ? { status: input.status as FaultStatus } : {}),
+      ...(input.severity ? { severity: input.severity as FaultSeverity } : {}),
+      ...(equipment ? { equipmentId: equipment.id } : {}),
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: input.limit + 1,
+    ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+    include: {
+      equipment: { select: { publicId: true, assetId: true, name: true, location: true } },
+    },
+  });
+  const hasMore = faults.length > input.limit;
+  const page = hasMore ? faults.slice(0, input.limit) : faults;
+  return {
+    items: page.map(toFaultListItem),
+    nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+  };
+}
+
+export async function getFault(
+  reference: string,
+  membership: ActiveMembership,
+  database: DbClient = db,
+) {
+  const fault = await database.faultReport.findFirst({
+    where: { publicReference: reference, gymId: membership.gymId },
+    include: faultDetailsInclude,
+  });
+  if (!fault) throw new FaultNotFoundError();
+  return toFaultDetails(fault, membership.role === "MANAGER");
+}
+
+export async function reviewFault(
+  reference: string,
+  input: FaultReviewInput,
+  membership: ActiveMembership,
+  requestId: string,
+  database: DbClient = db,
+) {
+  assertManager(membership);
+  const current = await database.faultReport.findFirst({
+    where: { publicReference: reference, gymId: membership.gymId },
+    include: { equipment: true },
+  });
+  if (!current) throw new FaultNotFoundError();
+  if (current.status !== FaultStatus.REPORTED)
+    throw new FaultReviewConflictError("Only reported faults can be reviewed.");
+  if (current.version !== input.version)
+    throw new FaultReviewConflictError("This fault changed elsewhere. Refresh and try again.");
+  if (current.equipment.archivedAt)
+    throw new FaultReviewConflictError("Archived equipment cannot be reviewed.");
+
+  return database.$transaction(async (tx) => {
+    const reviewed = await tx.faultReport.update({
+      where: { id: current.id },
+      data: {
+        severity: input.severity as FaultSeverity,
+        status: FaultStatus.UNDER_REVIEW,
+        version: { increment: 1 },
+      },
+    });
+    if (input.equipmentStatus !== current.equipment.currentStatus) {
+      const now = new Date();
+      await tx.equipment.update({
+        where: { id: current.equipment.id },
+        data: {
+          currentStatus: input.equipmentStatus as EquipmentStatus,
+          version: { increment: 1 },
+        },
+      });
+      await tx.equipmentStatusInterval.updateMany({
+        where: { equipmentId: current.equipment.id, endedAt: null },
+        data: { endedAt: now },
+      });
+      await tx.equipmentStatusInterval.create({
+        data: {
+          equipmentId: current.equipment.id,
+          status: input.equipmentStatus as EquipmentStatus,
+          sourceFaultId: current.id,
+          changedByMemberId: membership.id,
+          startedAt: now,
+        },
+      });
+    }
+    await tx.faultUpdate.create({
+      data: {
+        faultId: current.id,
+        gymId: membership.gymId,
+        authorMemberId: membership.id,
+        type: FaultUpdateType.STATUS,
+        body: "Fault reviewed.",
+        metadata: {
+          fromSeverity: current.severity,
+          toSeverity: input.severity,
+          fromEquipmentStatus: current.equipment.currentStatus,
+          toEquipmentStatus: input.equipmentStatus,
+        },
+      },
+    });
+    await tx.auditEvent.create({
+      data: {
+        gymId: membership.gymId,
+        actorMemberId: membership.id,
+        entityType: "FaultReport",
+        entityId: current.id,
+        action: "FAULT_REVIEWED",
+        metadata: {
+          reference: current.publicReference,
+          fromSeverity: current.severity,
+          toSeverity: input.severity,
+          fromEquipmentStatus: current.equipment.currentStatus,
+          toEquipmentStatus: input.equipmentStatus,
+        },
+        requestId,
+      },
+    });
+    const result = await tx.faultReport.findUniqueOrThrow({
+      where: { id: reviewed.id },
+      include: faultDetailsInclude,
+    });
+    return toFaultDetails(result, true);
+  });
 }
 
 // Validate the submission context, create one permanent fault report, attach valid evidence, apply any permitted equipment restriction, record history, and safely handle retries.
@@ -243,8 +476,14 @@ export async function submitFault(
 }
 
 export function faultSubmissionErrorCode(error: unknown): string {
+  return faultErrorCode(error);
+}
+
+export function faultErrorCode(error: unknown): string {
   if (error instanceof AuthorizationError) return "FORBIDDEN";
   if (error instanceof FaultSubmissionNotFoundError) return "NOT_FOUND";
   if (error instanceof FaultSubmissionConflictError) return "FAULT_SUBMISSION_CONFLICT";
-  return "FAULT_SUBMISSION_FAILED";
+  if (error instanceof FaultNotFoundError) return "NOT_FOUND";
+  if (error instanceof FaultReviewConflictError) return "FAULT_REVIEW_CONFLICT";
+  return "FAULT_OPERATION_FAILED";
 }

@@ -1,4 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,9 @@ export default async function DashboardPage() {
         <a className="button button--accent" href="/onboarding">
           Review gym setup
         </a>
+        <Link className="button" href="/faults">
+          View faults
+        </Link>
       </p>
     </main>
   );

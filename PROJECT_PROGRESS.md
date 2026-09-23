@@ -5,9 +5,9 @@
 - **Assessment date:** 2026-09-23
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
 - **Current phase:** Phase 4 — Fault intake
-- **Current capability:** Fault submission
+- **Current capability:** Manager review and prioritization
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** `13df104 feat: add fault submission workflow`
+- **Last capability commit:** `TBD — manager review and prioritization`
 
 ## Completed capabilities
 
@@ -135,13 +135,30 @@ Implemented:
 
 Relevant requirements: PRD FR-06 and FR-07; TRD FaultReport, FaultUpdate, signed media attachment, idempotent submission, status history, auditability, and tenant integrity.
 
+### 9. Manager review and prioritization
+
+Implemented and Gate 2 approved; ready for Git checkpoint.
+
+Implemented:
+
+- Tenant-scoped fault registry and fault detail views for active members.
+- Manager-only review endpoint and review form.
+- Severity and equipment-status revision with optimistic version protection.
+- `REPORTED` to `UNDER_REVIEW` transition, represented to the UI as the `REVIEWED` triage state.
+- Equipment status interval updates linked to the reviewed fault.
+- Fault timeline update and `FAULT_REVIEWED` audit event with before/after metadata.
+- Historical fault retention; no one-fault-per-equipment constraint was introduced.
+- Zod validation tests for review payloads and list filters.
+
+Relevant requirements: PRD FR-08 and US-03; TRD fault review contract, manager authorization, status transitions, equipment status history, auditability, and tenant isolation.
+
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 19 passed.
+- Unit tests: 21 passed.
 - ESLint: passed.
-- Production build: passed; onboarding, equipment, QR, fault-draft, and fault-submission API routes are present.
+- Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, and manager-review API routes are present.
 - Prisma schema validation with `.env.local`: passed.
 - Neon connectivity: read-only `SELECT 1` passed.
 - Migration application: complete. Neon migration `20260922235107_fault_submission` was created and applied after `20260922111937_fault_drafts_and_media`. A later status check could not reconnect to the configured Neon endpoint.
@@ -173,7 +190,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 
 ### Phase 5 — Reactive-maintenance lifecycle
 
-9. Manager review and prioritization.
+9. Manager review and prioritization — complete and approved.
 10. Repair assignment.
 11. Fault lifecycle, updates, resolution, and closure.
 12. Notifications and email delivery.
@@ -193,4 +210,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-After the Git checkpoint, begin capability 9: manager review and prioritization. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
+After the Git checkpoint, begin capability 10: repair assignment. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
