@@ -72,6 +72,9 @@ enum MediaState {
 
 enum NotificationType {
   FAULT_ASSIGNED
+  FAULT_RESOLVED
+  FAULT_CLOSED
+  FAULT_REOPENED
 }
 
 model Gym {

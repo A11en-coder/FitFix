@@ -5,9 +5,9 @@
 - **Assessment date:** 2026-09-23
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
 - **Current phase:** Phase 4 — Fault intake
-- **Current capability:** Repair assignment
+- **Current capability:** Fault lifecycle, updates, resolution, and closure
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** `TBD — repair assignment`
+- **Last capability commit:** `TBD — fault lifecycle, updates, resolution, and closure`
 
 ## Completed capabilities
 
@@ -174,13 +174,34 @@ Notification listing, read state controls, and email delivery remain scheduled f
 
 Relevant requirements: PRD FR-09 and US-04; TRD assignment service, internal/external assignment rules, target dates, auditability, notification creation, and tenant isolation.
 
+### 11. Fault lifecycle, updates, resolution, and closure
+
+Implemented and Gate 2 approved; ready for Git checkpoint.
+
+Implemented:
+
+- Explicit lifecycle endpoints for start, updates, resolve, close, and reopen.
+- Transition enforcement for `ASSIGNED`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, and reopened states.
+- Manager and internal-assignee authorization rules.
+- Resolution summary and optional repair-cost recording.
+- Manager-only verification, closure, and reopening.
+- Required reasons for reopening.
+- Chronological `FaultUpdate` records for comments, status changes, resolution, and reopening.
+- Immutable `AuditEvent` records for lifecycle actions.
+- Atomic lifecycle notifications for resolution, closure, and reopening.
+- Lifecycle controls integrated into the fault detail UI.
+- Prisma migration `20260923020455_fault_lifecycle`, applied to Neon.
+- Lifecycle schema tests and validation coverage.
+
+Relevant requirements: PRD FR-10, FR-11, FR-12, FR-14 and US-05 through US-07; TRD lifecycle transition table, update timeline, resolution and closure rules, auditability, notifications, and tenant isolation.
+
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 23 passed.
+- Unit tests: 25 passed.
 - ESLint: passed.
-- Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, manager-review, and assignment API routes are present.
+- Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, manager-review, assignment, and lifecycle API routes are present.
 - Prisma schema validation with `.env.local`: passed.
 - Neon connectivity: read-only `SELECT 1` passed.
 - Migration application: complete. Neon migration `20260922235107_fault_submission` was created and applied after `20260922111937_fault_drafts_and_media`. A later status check could not reconnect to the configured Neon endpoint.
@@ -214,7 +235,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 
 9. Manager review and prioritization — complete and approved.
 10. Repair assignment — complete and approved.
-11. Fault lifecycle, updates, resolution, and closure.
+11. Fault lifecycle, updates, resolution, and closure — complete and approved.
 12. Notifications and email delivery.
 
 ### Phase 6 — Operational insight
@@ -232,4 +253,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-After the Git checkpoint, begin capability 11: fault lifecycle, updates, resolution, and closure. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
+After the Git checkpoint, begin capability 12: notifications and email delivery. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.

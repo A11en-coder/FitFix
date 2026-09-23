@@ -138,8 +138,25 @@ function toFaultListItem(
 
 function toFaultDetails(
   fault: Prisma.FaultReportGetPayload<{ include: typeof faultDetailsInclude }>,
-  canReview: boolean,
+  membership: ActiveMembership,
 ) {
+  const isManager = membership.role === "MANAGER";
+  const isAssignee = fault.assigneeMemberId === membership.id;
+  const canWork = isManager || isAssignee;
+  const permittedActions =
+    fault.status === FaultStatus.REPORTED && isManager
+      ? ["REVIEW"]
+      : fault.status === FaultStatus.UNDER_REVIEW && isManager
+        ? ["ASSIGN"]
+        : fault.status === FaultStatus.ASSIGNED && canWork
+          ? ["START", "COMMENT"]
+          : fault.status === FaultStatus.IN_PROGRESS && canWork
+            ? ["COMMENT", "RESOLVE"]
+            : fault.status === FaultStatus.RESOLVED && isManager
+              ? ["CLOSE", "REOPEN"]
+              : fault.status === FaultStatus.CLOSED && isManager
+                ? ["REOPEN"]
+                : [];
   return {
     reference: fault.publicReference,
     title: fault.title,
@@ -171,12 +188,7 @@ function toFaultDetails(
       createdAt: update.createdAt,
       authorName: update.authorMember?.user.displayName ?? "FitFix",
     })),
-    permittedActions:
-      canReview && fault.status === FaultStatus.REPORTED
-        ? ["REVIEW"]
-        : canReview && fault.status === FaultStatus.UNDER_REVIEW
-          ? ["ASSIGN"]
-          : [],
+    permittedActions,
   };
 }
 
@@ -225,7 +237,7 @@ export async function getFault(
     include: faultDetailsInclude,
   });
   if (!fault) throw new FaultNotFoundError();
-  return toFaultDetails(fault, membership.role === "MANAGER");
+  return toFaultDetails(fault, membership);
 }
 
 export async function reviewFault(
@@ -316,7 +328,7 @@ export async function reviewFault(
       where: { id: reviewed.id },
       include: faultDetailsInclude,
     });
-    return toFaultDetails(result, true);
+    return toFaultDetails(result, membership);
   });
 }
 

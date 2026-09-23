@@ -128,6 +128,53 @@ export function FaultReview({ reference }: { reference: string }) {
     });
   }
 
+  async function transition(path: string, body: Record<string, unknown>) {
+    const currentFault = fault;
+    if (!currentFault) return;
+    setSaving(true);
+    setMessage(null);
+    const response = await fetch(`/api/faults/${reference}/${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...body, version: currentFault.version }),
+    });
+    const responseBody = await response.json();
+    if (response.ok) {
+      const refreshed = await fetch(`/api/faults/${reference}`);
+      if (refreshed.ok) setFault((await refreshed.json()).fault);
+    } else setMessage(responseBody.message ?? "The fault could not be updated.");
+    setSaving(false);
+  }
+
+  async function submitUpdate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    await transition("updates", { body: form.get("body") });
+    formElement.reset();
+  }
+
+  async function resolve(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await transition("resolve", { resolutionSummary: form.get("resolutionSummary") });
+  }
+
+  async function close(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await transition("close", {
+      repairCost: form.get("repairCost") || undefined,
+      equipmentStatus: form.get("equipmentStatus") || undefined,
+    });
+  }
+
+  async function reopen(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await transition("reopen", { reason: form.get("reason") });
+  }
+
   return (
     <article>
       <p className="eyebrow">
@@ -246,6 +293,74 @@ export function FaultReview({ reference }: { reference: string }) {
           </fieldset>
           <button className="button button--accent" disabled={saving} type="submit">
             {saving ? "Saving…" : "Assign repair"}
+          </button>
+        </form>
+      ) : null}
+      {fault.permittedActions.includes("START") ? (
+        <p>
+          <button
+            className="button button--accent"
+            disabled={saving}
+            onClick={() => void transition("start", {})}
+          >
+            {saving ? "Saving…" : "Start repair"}
+          </button>
+        </p>
+      ) : null}
+      {fault.permittedActions.includes("COMMENT") ? (
+        <form className="equipment-form" onSubmit={submitUpdate}>
+          <h2>Add update</h2>
+          <label>
+            Progress update
+            <textarea name="body" required maxLength={5000} />
+          </label>
+          <button className="button" disabled={saving} type="submit">
+            Post update
+          </button>
+        </form>
+      ) : null}
+      {fault.permittedActions.includes("RESOLVE") ? (
+        <form className="equipment-form" onSubmit={resolve}>
+          <h2>Mark resolved</h2>
+          <label>
+            Resolution summary
+            <textarea name="resolutionSummary" required maxLength={5000} />
+          </label>
+          <button className="button button--accent" disabled={saving} type="submit">
+            Mark resolved
+          </button>
+        </form>
+      ) : null}
+      {fault.permittedActions.includes("CLOSE") ? (
+        <form className="equipment-form" onSubmit={close}>
+          <h2>Verify and close</h2>
+          <label>
+            Repair cost
+            <input name="repairCost" type="number" min="0" step="0.01" />
+          </label>
+          <label>
+            Equipment status after repair
+            <select name="equipmentStatus" defaultValue="">
+              <option value="">Leave current status unchanged</option>
+              <option value="AVAILABLE">Available</option>
+              <option value="LIMITED">Limited</option>
+              <option value="OUT_OF_SERVICE">Out of service</option>
+            </select>
+          </label>
+          <button className="button button--accent" disabled={saving} type="submit">
+            Close fault
+          </button>
+        </form>
+      ) : null}
+      {fault.permittedActions.includes("REOPEN") ? (
+        <form className="equipment-form" onSubmit={reopen}>
+          <h2>Reopen fault</h2>
+          <label>
+            Reason
+            <textarea name="reason" required maxLength={5000} />
+          </label>
+          <button className="button" disabled={saving} type="submit">
+            Reopen fault
           </button>
         </form>
       ) : null}
