@@ -5,9 +5,9 @@
 - **Assessment date:** 2026-09-24
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
 - **Current phase:** Phase 7 — Release readiness
-- **Current capability:** Security, observability, and operational hardening
-- **Approval state:** Capability 15 complete; next capability ready for Gate 1
-- **Last capability commit:** `feat: complete responsive and accessible product experience` (current `HEAD`)
+- **Current capability:** Release and recovery evidence
+- **Approval state:** Capability 16 complete and Gate 2 approved; capability 17 ready for Gate 1
+- **Last capability commit:** `feat: harden security and operations` (current `HEAD` after checkpoint)
 
 ## Completed capabilities
 
@@ -276,14 +276,36 @@ Implemented:
 
 Relevant requirements: PRD NFR-01, NFR-02, NFR-04, NFR-05, NFR-08, NFR-09, NFR-12, NFR-14, and the responsive/accessibility behavior requirements; TRD NFR-01, NFR-02, NFR-04, NFR-05, NFR-08, NFR-09, NFR-12, NFR-14, TC-17, TC-18, TC-20, and TC-22.
 
+### 16. Security, observability, and operational hardening
+
+Implemented and Gate 2 approved; committed in `feat: harden security and operations`.
+
+Implemented:
+
+- Structured JSON logging with request IDs and redaction of secrets, tokens, provider payloads, and other sensitive values.
+- Request ID response headers on hardened health, internal-job, invitation, upload, and webhook flows.
+- Security response headers for content type, framing, referrer, permissions, and production transport security.
+- Constant-time internal-job secret comparison shared by outbox reconciliation and fault-draft cleanup.
+- Bounded per-process rate limits for staff invitations, upload signatures, and fault submissions with `429` retry guidance.
+- Database-backed readiness checks for `GET /api/health`, returning `503` without exposing connection details when unavailable.
+- Structured success, denial, duplicate, deferred-cleanup, and failure logging for key operational flows.
+- Expanded environment validation for Cloudinary, internal-job, and email configuration, including production-only email requirements.
+- Security foundation tests covering redaction, rate limiting, and internal-job authorization.
+- Operational runbook covering request tracing, health checks, provider failures, rate limiting, and incident response.
+
+No Prisma schema migration was required for this capability.
+
+Relevant requirements: PRD NFR-06, NFR-07, NFR-14, release readiness, and deployment/operations requirements; TRD security controls, observability signals, failure/recovery behavior, rate limiting, request tracing, internal job protection, and release gates.
+
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 28 passed.
+- Unit tests: 31 passed.
 - ESLint: passed.
 - Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, manager-review, assignment, and lifecycle API routes are present.
-- Latest verification: 28 unit tests passed, typecheck passed, ESLint passed, Prettier passed, production build passed, and the dashboard route/page compiled successfully.
+- Latest verification: 31 unit tests passed, typecheck passed, ESLint passed, Prettier passed, production build passed, and the dashboard route/page compiled successfully.
+- Capability 16 verification: security foundation tests, typecheck, ESLint, Prettier, production build, Prisma validation with `.env.local`, and `git diff --check` passed.
 - Prisma schema validation with `.env.local`: passed.
 - Dashboard migration deployment: passed. Neon migration `20260924010000_dashboard_indexes` was applied successfully, and `prisma migrate status` reports that the database schema is up to date.
 - Neon connectivity: read-only `SELECT 1` passed.
@@ -330,11 +352,11 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 ### Phase 7 — Release readiness
 
 15. Responsive and accessible product completion — complete.
-16. Security, observability, and operational hardening.
-17. Release and recovery evidence.
+16. Security, observability, and operational hardening — complete.
+17. Release and recovery evidence — next.
 
 Deferred from MVP: preventive maintenance, member reporting, multiple locations, authenticated technicians, inventory, billing, browser push, AI features, and custom profile/notification preferences.
 
 ## Next action
 
-After the Git checkpoint, begin capability 16: security, observability, and operational hardening.
+After the Git checkpoint, begin capability 17: release and recovery evidence.

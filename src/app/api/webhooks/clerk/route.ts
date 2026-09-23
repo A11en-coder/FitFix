@@ -8,6 +8,8 @@ import {
   webhookErrorCode,
 } from "../../../../features/auth/onboarding-service";
 import { createRequestContext } from "../../../../server/request-context";
+import { withRequestId } from "../../../../server/http";
+import { logError, logInfo, logWarn } from "../../../../server/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +21,10 @@ export async function POST(request: NextRequest) {
     // Verify the webhook request and parse the Clerk webhook event
     event = parseClerkWebhookEvent(await verifyWebhook(request));
   } catch (error) {
-    console.error("Clerk webhook verification or parsing failed", {
+    logWarn("clerk_webhook_verification_failed", {
       requestId: requestContext.requestId,
-      error: error instanceof Error ? error.name : "UNKNOWN_WEBHOOK_ERROR",
+      provider: "CLERK",
+      error,
     });
     return NextResponse.json(
       {
@@ -48,7 +51,18 @@ export async function POST(request: NextRequest) {
   const existing = await db.webhookEvent.findUnique({
     where: { provider_providerEventId: { provider: "CLERK", providerEventId } },
   });
-  if (existing?.status === "PROCESSED") return NextResponse.json({ ok: true, duplicate: true });
+  if (existing?.status === "PROCESSED") {
+    logInfo("clerk_webhook_duplicate", {
+      requestId: requestContext.requestId,
+      provider: "CLERK",
+      providerEventId,
+      eventType: event.type,
+    });
+    return withRequestId(
+      NextResponse.json({ ok: true, duplicate: true, requestId: requestContext.requestId }),
+      requestContext.requestId,
+    );
+  }
   // Record the webhook event in the database with a status of "RECEIVED" to track its processing state
   if (existing)
     await db.webhookEvent.update({
@@ -66,11 +80,29 @@ export async function POST(request: NextRequest) {
       where: { provider_providerEventId: { provider: "CLERK", providerEventId } },
       data: { status: "PROCESSED", processedAt: new Date(), errorCode: null },
     });
-    return NextResponse.json({ ok: true });
+    logInfo("clerk_webhook_processed", {
+      requestId: requestContext.requestId,
+      provider: "CLERK",
+      providerEventId,
+      eventType: event.type,
+      result: "PROCESSED",
+    });
+    return withRequestId(
+      NextResponse.json({ ok: true, requestId: requestContext.requestId }),
+      requestContext.requestId,
+    );
   } catch (error) {
     await db.webhookEvent.update({
       where: { provider_providerEventId: { provider: "CLERK", providerEventId } },
       data: { status: "FAILED", errorCode: webhookErrorCode(error) },
+    });
+    logError("clerk_webhook_processing_failed", {
+      requestId: requestContext.requestId,
+      provider: "CLERK",
+      providerEventId,
+      eventType: event.type,
+      result: "FAILED",
+      error,
     });
     return NextResponse.json(
       {

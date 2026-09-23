@@ -11,6 +11,9 @@ import {
 } from "../../../features/faults/fault-service";
 import { faultListQuerySchema } from "../../../features/faults/review-schema";
 import { faultSubmissionSchema } from "../../../features/faults/submission-schema";
+import { withRequestId } from "../../../server/http";
+import { logWarn } from "../../../server/logger";
+import { consumeRateLimit } from "../../../server/rate-limit";
 import { createRequestContext } from "../../../server/request-context";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +72,28 @@ export async function POST(request: Request) {
       },
       { status: 401 },
     );
+  const rateLimit = consumeRateLimit(`fault-submission:${userId}`, { limit: 10, windowMs: 60_000 });
+  if (!rateLimit.allowed) {
+    logWarn("rate_limit_exceeded", {
+      requestId: requestContext.requestId,
+      route: "/api/faults",
+      action: "fault_submission",
+      actorId: userId,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
+    return withRequestId(
+      NextResponse.json(
+        {
+          code: "RATE_LIMITED",
+          message: "Too many fault submissions. Please retry later.",
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+          requestId: requestContext.requestId,
+        },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+      ),
+      requestContext.requestId,
+    );
+  }
   try {
     const membership = await findActiveMembership(userId);
     if (!membership) throw new AuthorizationError("An active gym membership is required.");

@@ -4,25 +4,39 @@ import {
   outboxErrorCode,
 } from "../../../../../features/notifications/outbox-service";
 import { createRequestContext } from "../../../../../server/request-context";
+import { withRequestId } from "../../../../../server/http";
+import { isAuthorizedInternalJob } from "../../../../../server/internal-job";
+import { unauthorizedJobResponse } from "../../../../../server/internal-job-response";
+import { logError, logInfo, logWarn } from "../../../../../server/logger";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const requestContext = createRequestContext();
-  const secret = process.env.INTERNAL_JOB_SECRET;
-  if (!secret || request.headers.get("x-internal-job-secret") !== secret)
-    return NextResponse.json(
-      {
-        code: "UNAUTHORIZED_JOB",
-        message: "Job authorization required.",
-        requestId: requestContext.requestId,
-      },
-      { status: 401 },
-    );
+  if (!isAuthorizedInternalJob(request)) {
+    logWarn("internal_job_denied", {
+      requestId: requestContext.requestId,
+      route: "/api/internal/outbox/reconcile",
+    });
+    return unauthorizedJobResponse(requestContext.requestId);
+  }
   try {
     const result = await reconcileEmailOutbox();
-    return NextResponse.json({ ...result, requestId: requestContext.requestId });
+    logInfo("outbox_reconciliation_completed", {
+      requestId: requestContext.requestId,
+      route: "/api/internal/outbox/reconcile",
+      ...result,
+    });
+    return withRequestId(
+      NextResponse.json({ ...result, requestId: requestContext.requestId }),
+      requestContext.requestId,
+    );
   } catch (error) {
+    logError("outbox_reconciliation_failed", {
+      requestId: requestContext.requestId,
+      route: "/api/internal/outbox/reconcile",
+      error,
+    });
     return NextResponse.json(
       {
         code: outboxErrorCode(error),
