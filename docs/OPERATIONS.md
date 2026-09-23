@@ -28,3 +28,7 @@ Clerk webhook signatures continue to be verified before event processing. Every 
 4. For invitations, inspect Clerk webhook delivery status and the local webhook-event record.
 5. For email, inspect pending and failed outbox records before retrying reconciliation.
 6. For media, confirm whether assets remain `DELETE_PENDING`; do not manually remove database rows before provider cleanup is understood.
+
+## Release and recovery
+
+Use [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md) for release evidence and [`RECOVERY_REHEARSAL.md`](./RECOVERY_REHEARSAL.md) for isolated backup, restore, and rollback rehearsals. These records should identify the reviewed commit and migration set without storing secrets or sensitive user data.

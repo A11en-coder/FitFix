@@ -5,9 +5,9 @@
 - **Assessment date:** 2026-09-24
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
 - **Current phase:** Phase 7 — Release readiness
-- **Current capability:** Release and recovery evidence
-- **Approval state:** Capability 16 complete and Gate 2 approved; capability 17 ready for Gate 1
-- **Last capability commit:** `feat: harden security and operations` (current `HEAD` after checkpoint)
+- **Current capability:** Portfolio MVP implementation complete; commercial launch evidence remains pending
+- **Approval state:** Capability 17 complete and Gate 2 approved
+- **Last capability commit:** `feat: add release and recovery evidence` (current `HEAD` after checkpoint)
 
 ## Completed capabilities
 
@@ -297,6 +297,24 @@ No Prisma schema migration was required for this capability.
 
 Relevant requirements: PRD NFR-06, NFR-07, NFR-14, release readiness, and deployment/operations requirements; TRD security controls, observability signals, failure/recovery behavior, rate limiting, request tracing, internal job protection, and release gates.
 
+### 17. Release and recovery evidence
+
+Implemented, Gate 2 approved, and committed in `feat: add release and recovery evidence`.
+
+Implemented:
+
+- CI PostgreSQL 16 service for clean-database migration rehearsal.
+- CI formatting check and `prisma migrate deploy` execution using isolated credentials.
+- `npm run db:deploy` script for repeatable migration deployment.
+- Release checklist covering automated quality, environment, provider, migration, staging smoke, promotion, and monitoring gates.
+- Recovery rehearsal guide covering backup/restore evidence, row-count and schema checks, tenant and lifecycle verification, and rollback procedure.
+- Operations guide links to the release and recovery evidence documents.
+- Explicit distinction between portfolio-MVP readiness and commercial-production prerequisites.
+
+No application schema migration or production deployment was performed for this capability. The provider-specific backup and restore rehearsal remains a manual launch prerequisite.
+
+Relevant requirements: PRD launch-readiness criteria and product dependencies; TRD deployment and rollout sequence, rollback runbook, recovery objectives, TC-23, operational gate, and launch gate.
+
 ## Verification
 
 - Prettier check: passed.
@@ -306,6 +324,8 @@ Relevant requirements: PRD NFR-06, NFR-07, NFR-14, release readiness, and deploy
 - Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, manager-review, assignment, and lifecycle API routes are present.
 - Latest verification: 31 unit tests passed, typecheck passed, ESLint passed, Prettier passed, production build passed, and the dashboard route/page compiled successfully.
 - Capability 16 verification: security foundation tests, typecheck, ESLint, Prettier, production build, Prisma validation with `.env.local`, and `git diff --check` passed.
+- Capability 17 verification: typecheck, ESLint, Prettier, 31 unit tests, production build, Prisma schema validation, read-only Prisma `SELECT 1`, and `prisma migrate status` passed outside the restricted sandbox; 11 migrations were found and the Neon database was up to date.
+- Capability 17 CI evidence: workflow configured with a PostgreSQL 16 service and clean-database `prisma migrate deploy`; the hosted workflow remains to be run by GitHub after push.
 - Prisma schema validation with `.env.local`: passed.
 - Dashboard migration deployment: passed. Neon migration `20260924010000_dashboard_indexes` was applied successfully, and `prisma migrate status` reports that the database schema is up to date.
 - Neon connectivity: read-only `SELECT 1` passed.
@@ -353,10 +373,10 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 
 15. Responsive and accessible product completion — complete.
 16. Security, observability, and operational hardening — complete.
-17. Release and recovery evidence — next.
+17. Release and recovery evidence — complete.
 
 Deferred from MVP: preventive maintenance, member reporting, multiple locations, authenticated technicians, inventory, billing, browser push, AI features, and custom profile/notification preferences.
 
 ## Next action
 
-After the Git checkpoint, begin capability 17: release and recovery evidence.
+The approved portfolio MVP implementation is complete. Before any commercial production launch, complete the provider-specific backup/restore rehearsal, staging smoke flow, dependency/secret review, and final release checklist.

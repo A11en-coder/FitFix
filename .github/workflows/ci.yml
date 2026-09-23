@@ -7,6 +7,20 @@ on:
 jobs:
   foundation:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: fitfix
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U ci -d fitfix"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -14,10 +28,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run format:check
       - run: npm run db:validate
         env:
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/fitfix
-          DIRECT_URL: postgresql://ci:ci@localhost:5432/fitfix
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/fitfix?schema=public
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/fitfix?schema=public
+      - run: npm run db:deploy
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/fitfix?schema=public
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/fitfix?schema=public
       - run: npm run typecheck
       - run: npm test
       - run: npm run lint
