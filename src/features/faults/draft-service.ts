@@ -265,14 +265,8 @@ export async function expireFaultDrafts(now = new Date(), database: DbClient = d
     where: { updatedAt: { lt: cutoff } },
     select: { id: true },
   });
-  const pendingMedia: Array<{ id: string; cloudinaryPublicId: string }> = [];
   for (const draft of drafts) {
     await database.$transaction(async (tx) => {
-      const media = await tx.mediaAsset.findMany({
-        where: { draftId: draft.id, state: MediaState.DRAFT },
-        select: { id: true, cloudinaryPublicId: true },
-      });
-      pendingMedia.push(...media);
       await tx.mediaAsset.updateMany({
         where: { draftId: draft.id, state: MediaState.DRAFT },
         data: { draftId: null, state: MediaState.DELETE_PENDING },
@@ -280,6 +274,10 @@ export async function expireFaultDrafts(now = new Date(), database: DbClient = d
       await tx.faultDraft.delete({ where: { id: draft.id } });
     });
   }
+  const pendingMedia = await database.mediaAsset.findMany({
+    where: { state: MediaState.DELETE_PENDING },
+    select: { id: true, cloudinaryPublicId: true },
+  });
   return { expiredDrafts: drafts.length, pendingMedia };
 }
 

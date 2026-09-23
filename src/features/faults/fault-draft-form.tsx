@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 type DraftMedia = {
@@ -59,6 +59,9 @@ export function FaultDraftForm({
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submittedReference, setSubmittedReference] = useState<string | null>(null);
+  const submissionKey = useRef<string | null>(null);
 
   useEffect(() => {
     const storageKey = `fitfix:fault-draft:${equipmentPublicId || "unassigned"}`;
@@ -130,6 +133,61 @@ export function FaultDraftForm({
       setMessage(error instanceof Error ? error.message : "The draft could not be saved.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function submitFault() {
+    const missing = [
+      !form.equipmentPublicId && "equipment",
+      !form.title && "title",
+      !form.description && "description",
+      !form.severity && "severity",
+      !form.equipmentStatus && "equipment status",
+      !form.discoveredAt && "discovery time",
+    ].filter(Boolean);
+    if (missing.length) {
+      setMessage(`Complete the following before submitting: ${missing.join(", ")}.`);
+      return;
+    }
+
+    setSubmitting(true);
+    setMessage(null);
+    try {
+      const currentDraft = draft ?? (await persistDraft());
+      submissionKey.current ??= window.crypto.randomUUID();
+      const response = await fetch("/api/faults", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "Idempotency-Key": submissionKey.current,
+        },
+        body: JSON.stringify({
+          draftId: currentDraft.id,
+          equipmentPublicId: form.equipmentPublicId,
+          title: form.title,
+          description: form.description,
+          severity: form.severity,
+          equipmentStatus: form.equipmentStatus,
+          discoveredAt: new Date(form.discoveredAt).toISOString(),
+          immediateAction: form.immediateAction || null,
+          mediaAssetIds: currentDraft.mediaAssets.map((media) => media.id),
+          version: currentDraft.version,
+        }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.message ?? "The fault could not be submitted.");
+      const reference = body?.data?.reference as string | undefined;
+      window.localStorage.removeItem(
+        `fitfix:fault-draft:${form.equipmentPublicId || "unassigned"}`,
+      );
+      setDraft(null);
+      setSubmittedReference(reference ?? null);
+      setMessage(reference ? `Fault ${reference} submitted.` : "Fault submitted.");
+      submissionKey.current = null;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The fault could not be submitted.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -210,6 +268,23 @@ export function FaultDraftForm({
       router.push(form.equipmentPublicId ? `/equipment/${form.equipmentPublicId}` : "/equipment");
     } else setMessage("The draft could not be discarded.");
   }
+
+  if (submittedReference)
+    return (
+      <section className="card" aria-live="polite">
+        <h2>Fault submitted</h2>
+        <p>
+          Your report reference is <strong>{submittedReference}</strong>. A manager can now review
+          it.
+        </p>
+        <a
+          className="button"
+          href={form.equipmentPublicId ? `/equipment/${form.equipmentPublicId}` : "/equipment"}
+        >
+          Return to equipment
+        </a>
+      </section>
+    );
 
   return (
     <form className="equipment-form" onSubmit={(event) => void save(event)}>
@@ -304,12 +379,20 @@ export function FaultDraftForm({
         <button className="button" type="submit" disabled={saving || uploading}>
           {saving ? "Saving…" : "Save draft"}
         </button>
+        <button
+          className="button button--accent"
+          type="button"
+          onClick={() => void submitFault()}
+          disabled={saving || uploading || submitting}
+        >
+          {submitting ? "Submitting…" : "Submit fault"}
+        </button>
         {draft ? (
           <button
             className="button button-secondary"
             type="button"
             onClick={() => void discard()}
-            disabled={saving || uploading}
+            disabled={saving || uploading || submitting}
           >
             Discard draft
           </button>
