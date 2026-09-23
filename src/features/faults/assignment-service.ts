@@ -1,6 +1,7 @@
 import { FaultStatus, FaultUpdateType, MemberStatus, Prisma } from "@prisma/client";
 import { db } from "../../server/db";
 import { assertManager, type ActiveMembership } from "../auth/role-policy";
+import { persistNotification } from "../notifications/notification-service";
 import type { FaultAssignmentInput } from "./assignment-schema";
 
 type DbClient = typeof db;
@@ -114,17 +115,15 @@ export async function assignFault(
       },
     });
     if (assigneeMemberId) {
-      await tx.notification.create({
-        data: {
-          gymId: membership.gymId,
-          recipientMemberId: assigneeMemberId,
-          faultId: assigned.id,
-          type: "FAULT_ASSIGNED",
-          title: "Repair assigned",
-          body: `You have been assigned ${current.publicReference}: ${current.title}.`,
-          destination: `/faults/${current.publicReference}`,
-          dedupeKey: `fault-assigned:${current.id}:${assigneeMemberId}:${input.version}`,
-        },
+      await persistNotification(tx, {
+        gymId: membership.gymId,
+        recipientMemberId: assigneeMemberId,
+        faultId: assigned.id,
+        reference: current.publicReference,
+        type: "FAULT_ASSIGNED",
+        title: "Repair assigned",
+        body: `You have been assigned ${current.publicReference}: ${current.title}.`,
+        dedupeKey: `fault-assigned:${current.id}:${assigneeMemberId}:${input.version}`,
       });
     }
     return assigned;

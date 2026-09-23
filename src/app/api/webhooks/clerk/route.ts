@@ -18,20 +18,35 @@ export async function POST(request: NextRequest) {
   try {
     // Verify the webhook request and parse the Clerk webhook event
     event = parseClerkWebhookEvent(await verifyWebhook(request));
-  } catch {
+  } catch (error) {
+    console.error("Clerk webhook verification or parsing failed", {
+      requestId: requestContext.requestId,
+      error: error instanceof Error ? error.name : "UNKNOWN_WEBHOOK_ERROR",
+    });
     return NextResponse.json(
       {
         code: "INVALID_WEBHOOK",
-        message: "Webhook verification failed.",
+        message: "Webhook verification or payload validation failed.",
         requestId: requestContext.requestId,
       },
       { status: 400 },
     );
   }
 
+  const providerEventId = request.headers.get("svix-id");
+  if (!providerEventId)
+    return NextResponse.json(
+      {
+        code: "INVALID_WEBHOOK",
+        message: "Webhook delivery ID is missing.",
+        requestId: requestContext.requestId,
+      },
+      { status: 400 },
+    );
+
   // Check if the webhook event has already been processed to avoid duplicate processing
   const existing = await db.webhookEvent.findUnique({
-    where: { provider_providerEventId: { provider: "CLERK", providerEventId: event.id } },
+    where: { provider_providerEventId: { provider: "CLERK", providerEventId } },
   });
   if (existing?.status === "PROCESSED") return NextResponse.json({ ok: true, duplicate: true });
   // Record the webhook event in the database with a status of "RECEIVED" to track its processing state
@@ -42,19 +57,19 @@ export async function POST(request: NextRequest) {
     });
   else
     await db.webhookEvent.create({
-      data: { provider: "CLERK", providerEventId: event.id, eventType: event.type },
+      data: { provider: "CLERK", providerEventId, eventType: event.type },
     });
 
   try {
     await reconcileClerkWebhook(event.type, event.data);
     await db.webhookEvent.update({
-      where: { provider_providerEventId: { provider: "CLERK", providerEventId: event.id } },
+      where: { provider_providerEventId: { provider: "CLERK", providerEventId } },
       data: { status: "PROCESSED", processedAt: new Date(), errorCode: null },
     });
     return NextResponse.json({ ok: true });
   } catch (error) {
     await db.webhookEvent.update({
-      where: { provider_providerEventId: { provider: "CLERK", providerEventId: event.id } },
+      where: { provider_providerEventId: { provider: "CLERK", providerEventId } },
       data: { status: "FAILED", errorCode: webhookErrorCode(error) },
     });
     return NextResponse.json(

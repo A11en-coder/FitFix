@@ -68,6 +68,10 @@ export async function POST(request: Request) {
       { status: 202 },
     );
   } catch (error) {
+    console.error("Staff invitation request failed", {
+      requestId: requestContext.requestId,
+      error: error instanceof Error ? error.name : "UNKNOWN_INVITATION_ERROR",
+    });
     if (error instanceof ZodError)
       return NextResponse.json(
         {

@@ -13,7 +13,7 @@ const environmentSchema = z.object({
   CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: z.string().startsWith("/"),
   CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: z.string().startsWith("/"),
   DATABASE_URL: z.string().min(1),
-  DIRECT_URL: z.string().min(1)
+  DIRECT_URL: z.string().min(1),
 });
 
 export type AppConfig = z.infer<typeof environmentSchema>;
@@ -21,7 +21,9 @@ export type AppConfig = z.infer<typeof environmentSchema>;
 export function getConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
   const result = environmentSchema.safeParse(environment);
   if (!result.success) {
-    throw new Error(`Invalid application configuration: ${result.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
+    throw new Error(
+      `Invalid application configuration: ${result.error.issues.map((issue) => issue.path.join(".")).join(", ")}`,
+    );
   }
   return result.data;
 }

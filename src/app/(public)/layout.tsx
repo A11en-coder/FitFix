@@ -5,7 +5,9 @@ export default function PublicLayout({ children }: Readonly<{ children: React.Re
   return (
     <>
       <header className="site-header">
-        <Link className="brand" href="/">FitFix</Link>
+        <Link className="brand" href="/">
+          FitFix
+        </Link>
         <nav aria-label="Primary navigation" className="nav">
           <Link href="/support">Support</Link>
           <AuthControls />

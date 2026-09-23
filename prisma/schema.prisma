@@ -71,10 +71,18 @@ enum MediaState {
 }
 
 enum NotificationType {
+  FAULT_HIGH_SEVERITY
   FAULT_ASSIGNED
   FAULT_RESOLVED
   FAULT_CLOSED
   FAULT_REOPENED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
 }
 
 model Gym {
@@ -303,9 +311,28 @@ model Notification {
   gym               Gym              @relation(fields: [gymId], references: [id], onDelete: Restrict)
   recipientMember   GymMember        @relation(fields: [recipientMemberId], references: [id], onDelete: Restrict)
   fault             FaultReport      @relation(fields: [faultId], references: [id], onDelete: Restrict)
+  emailOutbox       EmailOutbox?
 
   @@index([gymId, recipientMemberId, readAt, createdAt])
   @@index([faultId, createdAt])
+}
+
+model EmailOutbox {
+  id                String       @id @default(uuid()) @db.Uuid
+  dedupeKey         String       @unique @db.VarChar(160)
+  notificationId    String       @unique @db.Uuid
+  recipientEmail    String       @db.VarChar(254)
+  templateKey       String       @db.VarChar(80)
+  payload           Json         @default("{}")
+  status            OutboxStatus @default(PENDING)
+  attempts          Int          @default(0)
+  nextAttemptAt     DateTime     @default(now()) @db.Timestamptz(3)
+  providerMessageId String?      @db.VarChar(255)
+  lastErrorCode     String?      @db.VarChar(80)
+  sentAt            DateTime?    @db.Timestamptz(3)
+  notification      Notification @relation(fields: [notificationId], references: [id], onDelete: Restrict)
+
+  @@index([status, nextAttemptAt])
 }
 
 model FaultUpdate {

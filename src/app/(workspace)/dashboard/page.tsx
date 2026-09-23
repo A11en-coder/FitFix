@@ -19,6 +19,9 @@ export default async function DashboardPage() {
         <Link className="button" href="/faults">
           View faults
         </Link>
+        <Link className="button" href="/notifications">
+          Notifications
+        </Link>
       </p>
     </main>
   );

@@ -3,9 +3,10 @@
 import { z } from "zod";
 
 const webhookEventSchema = z.object({
-  id: z.string().min(1),
   type: z.string().min(1),
   data: z.record(z.unknown()),
+  object: z.literal("event"),
+  event_attributes: z.record(z.unknown()).optional(),
 });
 
 export type ClerkWebhookEvent = z.infer<typeof webhookEventSchema>;
@@ -23,6 +24,7 @@ export function mapClerkMembershipStatus(
   status: unknown,
 ): "ACTIVE" | "INVITED" | "DEACTIVATED" {
   if (eventType.endsWith(".deleted")) return "DEACTIVATED";
+  if (eventType.endsWith(".created")) return "ACTIVE";
   return status === "active" || status === "accepted" ? "ACTIVE" : "INVITED";
 }
 

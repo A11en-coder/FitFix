@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { db } from "../../server/db";
 import { AuthorizationError, assertManager, type ActiveMembership } from "../auth/role-policy";
+import { persistNotification } from "../notifications/notification-service";
 import type { FaultSubmissionInput } from "./submission-schema";
 import type { FaultListQueryInput, FaultReviewInput } from "./review-schema";
 
@@ -476,6 +477,25 @@ export async function submitFault(
           requestId,
         },
       });
+
+      if (input.severity === "HIGH" || input.severity === "CRITICAL") {
+        const managers = await tx.gymMember.findMany({
+          where: { gymId: membership.gymId, role: "MANAGER", status: "ACTIVE" },
+          select: { id: true },
+        });
+        for (const manager of managers) {
+          await persistNotification(tx, {
+            gymId: membership.gymId,
+            recipientMemberId: manager.id,
+            faultId: fault.id,
+            reference: fault.publicReference,
+            type: "FAULT_HIGH_SEVERITY",
+            title: "High-severity fault reported",
+            body: `${fault.publicReference} requires manager attention: ${fault.title}.`,
+            dedupeKey: `fault-high-severity:${fault.id}:${manager.id}`,
+          });
+        }
+      }
 
       return tx.faultReport.findUniqueOrThrow({ where: { id: fault.id }, include: faultInclude });
     });

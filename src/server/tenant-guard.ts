@@ -4,7 +4,6 @@ export type Principal = Readonly<{ clerkUserId: string }>;
 export type TenantMembership = Readonly<{ gymId: string; status: "ACTIVE" }>;
 export type TenantContext = Readonly<{ gymId: string; clerkUserId: string }>;
 
-
 export class TenantGuardError extends Error {
   public readonly code = "TENANT_ACCESS_DENIED" as const;
 
@@ -19,14 +18,13 @@ type MembershipLookup = (clerkUserId: string) => Promise<TenantMembership | null
 // If there is no authenticated identity, the request cannot be assigned to a gym.
 export async function resolveTenantContext(
   principal: Principal | null,
-  lookupMembership: MembershipLookup
+  lookupMembership: MembershipLookup,
 ): Promise<TenantContext> {
   if (!principal?.clerkUserId) throw new TenantGuardError();
 
   // If the user is not a member of any gym, or if their membership is not active, they cannot access any gym resources.
   const membership = await lookupMembership(principal.clerkUserId);
-  if (!membership || membership.status !== "ACTIVE")
-    throw new TenantGuardError();
+  if (!membership || membership.status !== "ACTIVE") throw new TenantGuardError();
 
   // After this point, the domain service has a trusted tenant boundary.
   return { gymId: membership.gymId, clerkUserId: principal.clerkUserId };

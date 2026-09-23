@@ -8,6 +8,7 @@ import {
 } from "@prisma/client";
 import { db } from "../../server/db";
 import { AuthorizationError, type ActiveMembership } from "../auth/role-policy";
+import { persistNotification } from "../notifications/notification-service";
 import type {
   FaultCloseInput,
   FaultReopenInput,
@@ -77,17 +78,15 @@ async function addNotification(
     version: number;
   },
 ) {
-  await tx.notification.create({
-    data: {
-      gymId: input.gymId,
-      recipientMemberId: input.recipientMemberId,
-      faultId: input.faultId,
-      type: input.type,
-      title: input.title,
-      body: input.body,
-      destination: `/faults/${input.reference}`,
-      dedupeKey: `fault-${input.action}:${input.faultId}:${input.recipientMemberId}:${input.version}`,
-    },
+  await persistNotification(tx, {
+    gymId: input.gymId,
+    recipientMemberId: input.recipientMemberId,
+    faultId: input.faultId,
+    reference: input.reference,
+    type: input.type,
+    title: input.title,
+    body: input.body,
+    dedupeKey: `fault-${input.action}:${input.faultId}:${input.recipientMemberId}:${input.version}`,
   });
 }
 

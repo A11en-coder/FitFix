@@ -16,7 +16,7 @@ describe("identity reconciliation", () => {
       mapClerkMembershipStatus("organizationMembership.deleted", "active"),
       "DEACTIVATED",
     );
-    assert.equal(mapClerkMembershipStatus("organizationMembership.created", "active"), "ACTIVE");
+    assert.equal(mapClerkMembershipStatus("organizationMembership.created", undefined), "ACTIVE");
   });
 
   it("normalizes profile data without storing a raw provider payload", () => {
@@ -41,9 +41,14 @@ describe("identity reconciliation", () => {
 
   it("requires a verified event-shaped payload before reconciliation", () => {
     assert.deepEqual(
-      parseClerkWebhookEvent({ id: "evt_1", type: "organization.created", data: { id: "org_1" } })
-        .id,
-      "evt_1",
+      parseClerkWebhookEvent({
+        data: { id: "org_1" },
+        object: "event",
+        timestamp: 1_700_000_000_000,
+        instance_id: "ins_1",
+        type: "organization.created",
+      }).type,
+      "organization.created",
     );
     assert.throws(() => parseClerkWebhookEvent({ type: "organization.created", data: {} }));
   });

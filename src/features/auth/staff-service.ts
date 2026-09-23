@@ -99,6 +99,10 @@ export async function inviteStaff(
     emailAddress: input.email,
     role: clerkRoleForMemberRole(input.role === "MANAGER" ? MemberRole.MANAGER : MemberRole.STAFF),
     inviterUserId: membership.user.clerkUserId,
+    redirectUrl: new URL(
+      "/accept-invitation",
+      process.env.APP_URL ?? "http://localhost:3000",
+    ).toString(),
   });
   return database.$transaction(async (tx) => {
     const saved = await tx.staffInvitation.create({
