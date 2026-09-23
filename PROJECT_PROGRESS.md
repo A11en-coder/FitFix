@@ -2,12 +2,12 @@
 
 ## Status
 
-- **Assessment date:** 2026-09-23
+- **Assessment date:** 2026-09-24
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
-- **Current phase:** Phase 4 — Fault intake
-- **Current capability:** Fault lifecycle, updates, resolution, and closure
+- **Current phase:** Phase 5 — Reactive-maintenance lifecycle
+- **Current capability:** Notifications and email delivery
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** `TBD — fault lifecycle, updates, resolution, and closure`
+- **Last capability commit:** `4803ad8 feat: add notifications and reliable invitations`
 
 ## Completed capabilities
 
@@ -195,6 +195,25 @@ Implemented:
 
 Relevant requirements: PRD FR-10, FR-11, FR-12, FR-14 and US-05 through US-07; TRD lifecycle transition table, update timeline, resolution and closure rules, auditability, notifications, and tenant isolation.
 
+### 12. Notifications and email delivery
+
+Implemented and Gate 2 approved; ready for Git checkpoint.
+
+Implemented:
+
+- Durable in-app notification creation for assignments and lifecycle events.
+- Tenant-scoped notification listing, unread counts, and read-state updates.
+- Notifications page and shared workspace navigation entry.
+- Database-backed email outbox with retry metadata and delivery status.
+- High-severity fault email enqueueing for active managers.
+- Resend email delivery adapter with a retryable internal reconciliation route.
+- Prisma migrations for the notification and email-outbox models.
+- Dedicated Clerk invitation acceptance route using Clerk ticket sign-in/sign-up flows.
+- Clerk webhook verification, Svix delivery deduplication, invitation reconciliation, and active membership reconciliation.
+- Cleanup of temporary provider-diagnostic response details and legacy event-name compatibility helpers.
+
+Relevant requirements: PRD FR-16, US-03, US-04, US-05, and the transactional email integration requirement; TRD notification contracts, email outbox, Resend integration, webhook verification, retry handling, and tenant isolation.
+
 ## Verification
 
 - Prettier check: passed.
@@ -202,6 +221,7 @@ Relevant requirements: PRD FR-10, FR-11, FR-12, FR-14 and US-05 through US-07; T
 - Unit tests: 25 passed.
 - ESLint: passed.
 - Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, manager-review, assignment, and lifecycle API routes are present.
+- Latest verification: 27 unit tests passed, typecheck passed, ESLint passed, production build passed, and invitation membership reconciliation was verified against Clerk webhook payloads.
 - Prisma schema validation with `.env.local`: passed.
 - Neon connectivity: read-only `SELECT 1` passed.
 - Migration application: complete. Neon migration `20260922235107_fault_submission` was created and applied after `20260922111937_fault_drafts_and_media`. A later status check could not reconnect to the configured Neon endpoint.
@@ -236,7 +256,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 9. Manager review and prioritization — complete and approved.
 10. Repair assignment — complete and approved.
 11. Fault lifecycle, updates, resolution, and closure — complete and approved.
-12. Notifications and email delivery.
+12. Notifications and email delivery — complete.
 
 ### Phase 6 — Operational insight
 
@@ -253,4 +273,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-After the Git checkpoint, begin capability 12: notifications and email delivery. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
+After the Git checkpoint, begin capability 13: equipment history, downtime, costs, search, and filters. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
