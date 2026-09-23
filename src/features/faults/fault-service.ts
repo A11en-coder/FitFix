@@ -29,6 +29,8 @@ const faultDetailsInclude = {
     select: { publicId: true, assetId: true, name: true, location: true, currentStatus: true },
   },
   reporterMember: { select: { user: { select: { displayName: true } } } },
+  assigneeMember: { select: { user: { select: { displayName: true } } } },
+  externalTechnician: { select: { id: true, name: true, company: true, email: true, phone: true } },
   mediaAssets: {
     where: { state: MediaState.ATTACHED },
     orderBy: { createdAt: "asc" as const },
@@ -158,6 +160,8 @@ function toFaultDetails(
     updatedAt: fault.updatedAt,
     reporterName: fault.reporterMember.user.displayName,
     equipment: fault.equipment,
+    assigneeMember: fault.assigneeMember?.user.displayName ?? null,
+    externalTechnician: fault.externalTechnician,
     mediaAssets: fault.mediaAssets,
     updates: fault.updates.map((update) => ({
       id: update.id,
@@ -167,7 +171,12 @@ function toFaultDetails(
       createdAt: update.createdAt,
       authorName: update.authorMember?.user.displayName ?? "FitFix",
     })),
-    permittedActions: canReview && fault.status === FaultStatus.REPORTED ? ["REVIEW"] : [],
+    permittedActions:
+      canReview && fault.status === FaultStatus.REPORTED
+        ? ["REVIEW"]
+        : canReview && fault.status === FaultStatus.UNDER_REVIEW
+          ? ["ASSIGN"]
+          : [],
   };
 }
 

@@ -25,6 +25,8 @@ type Fault = {
     location: string;
     currentStatus: string;
   };
+  assigneeMember: string | null;
+  externalTechnician: { id: string; name: string; company: string | null } | null;
   mediaAssets: { id: string; secureUrl: string }[];
   updates: { id: string; body: string; authorName: string }[];
   permittedActions: string[];
@@ -34,6 +36,7 @@ export function FaultReview({ reference }: { reference: string }) {
   const [fault, setFault] = useState<Fault | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [staff, setStaff] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     void fetch(`/api/faults/${reference}`).then(async (response) => {
@@ -66,6 +69,63 @@ export function FaultReview({ reference }: { reference: string }) {
     if (response.ok) setFault(body.fault);
     else setMessage(body.message ?? "Fault could not be reviewed.");
     setSaving(false);
+  }
+
+  async function assign(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const currentFault = fault;
+    if (!currentFault) return;
+    const form = new FormData(event.currentTarget);
+    setSaving(true);
+    setMessage(null);
+    const assigneeType = String(form.get("assigneeType"));
+    const body =
+      assigneeType === "INTERNAL"
+        ? {
+            assigneeType,
+            assigneeMemberId: form.get("assigneeMemberId"),
+            targetDate: form.get("targetDate"),
+            version: currentFault.version,
+          }
+        : {
+            assigneeType,
+            targetDate: form.get("targetDate"),
+            version: currentFault.version,
+            externalTechnician: {
+              name: form.get("externalName"),
+              company: form.get("externalCompany") || undefined,
+              email: form.get("externalEmail") || undefined,
+              phone: form.get("externalPhone") || undefined,
+            },
+          };
+    const response = await fetch(`/api/faults/${reference}/assign`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const responseBody = await response.json();
+    if (response.ok) {
+      const refreshed = await fetch(`/api/faults/${reference}`);
+      if (refreshed.ok) setFault((await refreshed.json()).fault);
+    } else setMessage(responseBody.message ?? "The fault could not be assigned.");
+    setSaving(false);
+  }
+
+  function loadStaff() {
+    if (staff.length) return;
+    void fetch("/api/staff").then(async (response) => {
+      if (response.ok) {
+        const body = await response.json();
+        setStaff(
+          body.members
+            .filter((member: { status: string }) => member.status === "ACTIVE")
+            .map((member: { id: string; user: { displayName: string } }) => ({
+              id: member.id,
+              name: member.user.displayName,
+            })),
+        );
+      }
+    });
   }
 
   return (
@@ -128,6 +188,64 @@ export function FaultReview({ reference }: { reference: string }) {
           </label>
           <button className="button button--accent" disabled={saving} type="submit">
             {saving ? "Saving…" : "Mark reviewed"}
+          </button>
+        </form>
+      ) : null}
+      {fault.assigneeMember || fault.externalTechnician ? (
+        <section className="card">
+          <h2>Assignment</h2>
+          <p>
+            Assigned to {fault.assigneeMember ?? fault.externalTechnician?.name}
+            {fault.externalTechnician?.company ? ` (${fault.externalTechnician.company})` : ""}.
+          </p>
+        </section>
+      ) : null}
+      {fault.permittedActions.includes("ASSIGN") ? (
+        <form className="equipment-form" onSubmit={assign}>
+          <h2>Assign repair</h2>
+          <label>
+            Assignment type
+            <select name="assigneeType" defaultValue="INTERNAL" onChange={loadStaff}>
+              <option value="INTERNAL">Internal staff</option>
+              <option value="EXTERNAL">External technician</option>
+            </select>
+          </label>
+          <label>
+            Internal staff member
+            <select name="assigneeMemberId" onFocus={loadStaff}>
+              <option value="">Choose a staff member</option>
+              {staff.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Target date
+            <input name="targetDate" type="date" required />
+          </label>
+          <fieldset>
+            <legend>External technician details (when selected)</legend>
+            <label>
+              Name
+              <input name="externalName" maxLength={120} />
+            </label>
+            <label>
+              Company
+              <input name="externalCompany" maxLength={160} />
+            </label>
+            <label>
+              Email
+              <input name="externalEmail" type="email" maxLength={254} />
+            </label>
+            <label>
+              Phone
+              <input name="externalPhone" maxLength={40} />
+            </label>
+          </fieldset>
+          <button className="button button--accent" disabled={saving} type="submit">
+            {saving ? "Saving…" : "Assign repair"}
           </button>
         </form>
       ) : null}

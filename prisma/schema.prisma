@@ -70,15 +70,19 @@ enum MediaState {
   DELETED
 }
 
+enum NotificationType {
+  FAULT_ASSIGNED
+}
+
 model Gym {
-  id                  String            @id @default(uuid()) @db.Uuid
-  clerkOrganizationId String            @unique @db.VarChar(120)
-  name                String            @db.VarChar(120)
-  slug                String            @unique @db.VarChar(80)
-  timeZone            String            @db.VarChar(64)
-  currencyCode        String            @default("AUD") @db.Char(3)
-  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+  id                  String               @id @default(uuid()) @db.Uuid
+  clerkOrganizationId String               @unique @db.VarChar(120)
+  name                String               @db.VarChar(120)
+  slug                String               @unique @db.VarChar(80)
+  timeZone            String               @db.VarChar(64)
+  currencyCode        String               @default("AUD") @db.Char(3)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
   members             GymMember[]
   invitations         StaffInvitation[]
   auditEvents         AuditEvent[]
@@ -87,6 +91,8 @@ model Gym {
   faults              FaultReport[]
   faultUpdates        FaultUpdate[]
   mediaAssets         MediaAsset[]
+  externalTechnicians ExternalTechnician[]
+  notifications       Notification[]
 }
 
 model UserProfile {
@@ -115,6 +121,8 @@ model GymMember {
   reportedFaults           FaultReport[]
   faultUpdates             FaultUpdate[]
   uploadedMedia            MediaAsset[]
+  assignedFaults           FaultReport[]             @relation("InternalFaultAssignee")
+  notifications            Notification[]
 
   @@unique([gymId, userId])
   @@index([gymId])
@@ -183,6 +191,21 @@ model Equipment {
   @@index([gymId, category, location])
 }
 
+model ExternalTechnician {
+  id         String        @id @default(uuid()) @db.Uuid
+  gymId      String        @db.Uuid
+  name       String        @db.VarChar(120)
+  company    String?       @db.VarChar(160)
+  email      String?       @db.VarChar(254)
+  phone      String?       @db.VarChar(40)
+  archivedAt DateTime?     @db.Timestamptz(3)
+  gym        Gym           @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  faults     FaultReport[]
+
+  @@index([gymId, archivedAt])
+  @@index([gymId, name])
+}
+
 model EquipmentStatusInterval {
   id                String          @id @default(uuid()) @db.Uuid
   equipmentId       String          @db.Uuid
@@ -223,40 +246,63 @@ model FaultDraft {
 }
 
 model FaultReport {
-  id                       String           @id @default(uuid()) @db.Uuid
-  gymId                    String           @db.Uuid
-  publicReference          String           @unique @db.VarChar(24)
-  idempotencyKey           String           @db.VarChar(160)
-  idempotencyFingerprint   String           @db.Char(64)
-  equipmentId              String           @db.Uuid
-  reporterMemberId         String           @db.Uuid
-  title                    String           @db.VarChar(160)
-  description              String           @db.Text
-  severity                 FaultSeverity
-  status                   FaultStatus      @default(REPORTED)
+  id                      String              @id @default(uuid()) @db.Uuid
+  gymId                   String              @db.Uuid
+  publicReference         String              @unique @db.VarChar(24)
+  idempotencyKey          String              @db.VarChar(160)
+  idempotencyFingerprint  String              @db.Char(64)
+  equipmentId             String              @db.Uuid
+  reporterMemberId        String              @db.Uuid
+  title                   String              @db.VarChar(160)
+  description             String              @db.Text
+  severity                FaultSeverity
+  status                  FaultStatus         @default(REPORTED)
   reportedEquipmentStatus EquipmentStatus
-  immediateAction          String?          @db.Text
-  discoveredAt             DateTime         @db.Timestamptz(3)
-  assigneeMemberId         String?          @db.Uuid
-  externalTechnicianId     String?          @db.Uuid
-  targetDate               DateTime?        @db.Date
-  resolutionSummary        String?          @db.Text
-  repairCost               Decimal?         @db.Decimal(12, 2)
-  resolvedAt               DateTime?        @db.Timestamptz(3)
-  closedAt                 DateTime?        @db.Timestamptz(3)
-  version                  Int              @default(1)
-  createdAt                DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt                DateTime         @updatedAt @db.Timestamptz(3)
-  gym                      Gym              @relation(fields: [gymId], references: [id], onDelete: Restrict)
-  equipment                Equipment        @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
-  reporterMember           GymMember        @relation(fields: [reporterMemberId], references: [id], onDelete: Restrict)
-  mediaAssets              MediaAsset[]
-  updates                  FaultUpdate[]
+  immediateAction         String?             @db.Text
+  discoveredAt            DateTime            @db.Timestamptz(3)
+  assigneeMemberId        String?             @db.Uuid
+  externalTechnicianId    String?             @db.Uuid
+  targetDate              DateTime?           @db.Date
+  resolutionSummary       String?             @db.Text
+  repairCost              Decimal?            @db.Decimal(12, 2)
+  resolvedAt              DateTime?           @db.Timestamptz(3)
+  closedAt                DateTime?           @db.Timestamptz(3)
+  version                 Int                 @default(1)
+  createdAt               DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime            @updatedAt @db.Timestamptz(3)
+  gym                     Gym                 @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  equipment               Equipment           @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  reporterMember          GymMember           @relation(fields: [reporterMemberId], references: [id], onDelete: Restrict)
+  assigneeMember          GymMember?          @relation("InternalFaultAssignee", fields: [assigneeMemberId], references: [id], onDelete: Restrict)
+  externalTechnician      ExternalTechnician? @relation(fields: [externalTechnicianId], references: [id], onDelete: Restrict)
+  mediaAssets             MediaAsset[]
+  updates                 FaultUpdate[]
+  notifications           Notification[]
 
   @@unique([gymId, idempotencyKey])
   @@index([gymId, status, severity])
   @@index([gymId, equipmentId, createdAt])
   @@index([gymId, reporterMemberId])
+}
+
+model Notification {
+  id                String           @id @default(uuid()) @db.Uuid
+  gymId             String           @db.Uuid
+  recipientMemberId String           @db.Uuid
+  faultId           String           @db.Uuid
+  type              NotificationType
+  title             String           @db.VarChar(160)
+  body              String           @db.Text
+  destination       String           @db.VarChar(500)
+  dedupeKey         String           @unique @db.VarChar(160)
+  readAt            DateTime?        @db.Timestamptz(3)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  gym               Gym              @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  recipientMember   GymMember        @relation(fields: [recipientMemberId], references: [id], onDelete: Restrict)
+  fault             FaultReport      @relation(fields: [faultId], references: [id], onDelete: Restrict)
+
+  @@index([gymId, recipientMemberId, readAt, createdAt])
+  @@index([faultId, createdAt])
 }
 
 model FaultUpdate {
@@ -277,22 +323,22 @@ model FaultUpdate {
 }
 
 model MediaAsset {
-  id                 String      @id @default(uuid()) @db.Uuid
-  gymId              String      @db.Uuid
-  uploadedByMemberId String      @db.Uuid
-  cloudinaryPublicId String      @unique @db.VarChar(255)
-  secureUrl          String      @db.Text
-  mimeType           String      @db.VarChar(64)
+  id                 String       @id @default(uuid()) @db.Uuid
+  gymId              String       @db.Uuid
+  uploadedByMemberId String       @db.Uuid
+  cloudinaryPublicId String       @unique @db.VarChar(255)
+  secureUrl          String       @db.Text
+  mimeType           String       @db.VarChar(64)
   bytes              Int
   width              Int
   height             Int
-  state              MediaState  @default(DRAFT)
-  draftId            String?     @db.Uuid
-  faultId            String?     @db.Uuid
-  createdAt          DateTime    @default(now()) @db.Timestamptz(3)
-  gym                Gym         @relation(fields: [gymId], references: [id], onDelete: Restrict)
-  uploadedByMember   GymMember   @relation(fields: [uploadedByMemberId], references: [id], onDelete: Restrict)
-  draft              FaultDraft? @relation(fields: [draftId], references: [id], onDelete: Restrict)
+  state              MediaState   @default(DRAFT)
+  draftId            String?      @db.Uuid
+  faultId            String?      @db.Uuid
+  createdAt          DateTime     @default(now()) @db.Timestamptz(3)
+  gym                Gym          @relation(fields: [gymId], references: [id], onDelete: Restrict)
+  uploadedByMember   GymMember    @relation(fields: [uploadedByMemberId], references: [id], onDelete: Restrict)
+  draft              FaultDraft?  @relation(fields: [draftId], references: [id], onDelete: Restrict)
   fault              FaultReport? @relation(fields: [faultId], references: [id], onDelete: Restrict)
 
   @@index([gymId, state, createdAt])

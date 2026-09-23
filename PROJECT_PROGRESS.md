@@ -5,9 +5,9 @@
 - **Assessment date:** 2026-09-23
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
 - **Current phase:** Phase 4 — Fault intake
-- **Current capability:** Manager review and prioritization
+- **Current capability:** Repair assignment
 - **Approval state:** Gate 2 approved; capability ready for Git checkpoint
-- **Last capability commit:** `TBD — manager review and prioritization`
+- **Last capability commit:** `TBD — repair assignment`
 
 ## Completed capabilities
 
@@ -152,13 +152,35 @@ Implemented:
 
 Relevant requirements: PRD FR-08 and US-03; TRD fault review contract, manager authorization, status transitions, equipment status history, auditability, and tenant isolation.
 
+### 10. Repair assignment
+
+Implemented and Gate 2 approved; ready for Git checkpoint.
+
+Implemented:
+
+- Manager-only assignment endpoint for reviewed faults.
+- Internal active-staff assignment with same-gym validation.
+- External technician records with optional company and contact details.
+- Required target repair date and optimistic version protection.
+- `UNDER_REVIEW` to `ASSIGNED` transition.
+- Exactly one internal or external assignment stored per fault.
+- Assignment timeline update and `FAULT_ASSIGNED` audit event.
+- Durable in-app notification creation for internal assignees.
+- Assignment form integrated into the fault detail page.
+- Prisma migration `20260923012853_repair_assignment`, applied to Neon.
+- Assignment schema tests and validation coverage.
+
+Notification listing, read state controls, and email delivery remain scheduled for capability 12.
+
+Relevant requirements: PRD FR-09 and US-04; TRD assignment service, internal/external assignment rules, target dates, auditability, notification creation, and tenant isolation.
+
 ## Verification
 
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
-- Unit tests: 21 passed.
+- Unit tests: 23 passed.
 - ESLint: passed.
-- Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, and manager-review API routes are present.
+- Production build: passed; onboarding, equipment, QR, fault-draft, fault-submission, manager-review, and assignment API routes are present.
 - Prisma schema validation with `.env.local`: passed.
 - Neon connectivity: read-only `SELECT 1` passed.
 - Migration application: complete. Neon migration `20260922235107_fault_submission` was created and applied after `20260922111937_fault_drafts_and_media`. A later status check could not reconnect to the configured Neon endpoint.
@@ -191,7 +213,7 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 ### Phase 5 — Reactive-maintenance lifecycle
 
 9. Manager review and prioritization — complete and approved.
-10. Repair assignment.
+10. Repair assignment — complete and approved.
 11. Fault lifecycle, updates, resolution, and closure.
 12. Notifications and email delivery.
 
@@ -210,4 +232,4 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-After the Git checkpoint, begin capability 10: repair assignment. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
+After the Git checkpoint, begin capability 11: fault lifecycle, updates, resolution, and closure. Cloudinary environment variables must be configured in `.env.local` for live media-upload verification.
