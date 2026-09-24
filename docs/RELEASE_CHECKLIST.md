@@ -4,22 +4,38 @@ This checklist is the release evidence record for the portfolio MVP. Complete it
 
 ## Release identity
 
-- Release candidate commit:
-- Release candidate date:
-- Prisma migration set:
-- Reviewer/owner:
-- Target environment: Preview / Staging / Production
+- Release candidate commit: `226ef6184fa43837ac6d3b93d91c62360f0693fe`
+- Release candidate date: 2026-09-24
+- Prisma migration set: 11 migrations through `20260924010000_dashboard_indexes`
+- Reviewer/owner: Pending assignment
+- Target environment: Local release-candidate evidence only; not staging or production
+
+## Current evidence baseline
+
+This record is intentionally limited to checks observed in the shared workspace. It does not establish staging, provider, recovery, performance, accessibility, or commercial-launch readiness.
+
+- `npm run format:check`: passed.
+- `npm run db:validate`: passed with explicit CI-style `DATABASE_URL` and `DIRECT_URL` values.
+- `npm run typecheck`: passed.
+- `npm test`: passed, 31 tests.
+- `npm run lint`: passed with zero warnings.
+- `npm run build`: passed.
+- `git diff --check`: passed.
+- Tracked-file secret-pattern scan: no matches; this is not a substitute for a provider or hosted secret scan.
+- Isolated `npm ci` from the committed lockfile: passed in a temporary directory; the shared workspace install remains blocked by the locked Prisma Windows query engine.
+- Dependency audit: 5 vulnerabilities reported (1 moderate, 4 high); remediation or explicit risk acceptance remains open.
+- Clean PostgreSQL migration deployment, hosted CI, staging smoke tests, provider contract tests, and recovery rehearsal: not verified.
 
 ## Automated quality gates
 
-- [ ] `npm ci` completed from the committed lockfile.
-- [ ] `npm run format:check` passed.
-- [ ] `npm run db:validate` passed.
+- [x] `npm ci` completed from the committed lockfile in an isolated temporary directory.
+- [x] `npm run format:check` passed.
+- [x] `npm run db:validate` passed.
 - [ ] `npm run db:deploy` passed against a clean PostgreSQL database.
-- [ ] `npm run typecheck` passed.
-- [ ] `npm test` passed.
-- [ ] `npm run lint` passed with zero warnings.
-- [ ] `npm run build` passed.
+- [x] `npm run typecheck` passed.
+- [x] `npm test` passed.
+- [x] `npm run lint` passed with zero warnings.
+- [x] `npm run build` passed.
 - [ ] Dependency and secret review completed without an unresolved release blocker.
 
 ## Environment and provider gates

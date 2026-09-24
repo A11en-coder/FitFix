@@ -379,4 +379,25 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-The approved portfolio MVP implementation is complete. Before any commercial production launch, complete the provider-specific backup/restore rehearsal, staging smoke flow, dependency/secret review, and final release checklist.
+The approved portfolio MVP implementation is complete. Post-MVP release-readiness has begun with a local release-candidate evidence baseline for commit `226ef6184fa43837ac6d3b93d91c62360f0693fe`.
+
+### Release-readiness baseline evidence
+
+Observed in the shared workspace on 2026-09-24:
+
+- `npm run format:check`, `npm run db:validate` with explicit CI-style URLs, `npm run typecheck`, `npm test` (31 tests), `npm run lint`, `npm run build`, and `git diff --check` passed.
+- A tracked-file secret-pattern scan found no matches; this is not a substitute for a hosted secret scan.
+- Isolated `npm ci` from the committed lockfile passed in a temporary directory; the shared workspace install remains blocked by the locked Prisma Windows query engine.
+- Dependency audit reported 5 vulnerabilities (1 moderate, 4 high); remediation or explicit risk acceptance remains unverified.
+- Clean-database migration deployment, hosted CI execution, staging/provider smoke tests, backup/restore rehearsal, performance/accessibility evidence, and final release ownership remain unverified.
+
+### Ordered post-MVP release-readiness roadmap
+
+1. Complete the reproducible release baseline: rerun `npm ci`, resolve dependency findings, complete hosted CI, and perform dependency and secret review.
+2. Verify environment and provider readiness across separate Clerk, Neon, Cloudinary, and Resend staging credentials, plans, quotas, domains, webhook settings, and scheduled-job secrets.
+3. Deploy the exact reviewed commit to staging and execute the authenticated manager/staff, tenant-isolation, equipment/QR, fault-lifecycle, notification, webhook, outbox, and readiness smoke flows.
+4. Complete the isolated Neon backup/restore and rollback rehearsal, including migration, row-count, tenant, lifecycle, media, outbox, and recovery-objective evidence.
+5. Produce product-quality evidence for browser coverage, responsive workflows, WCAG 2.2 AA checks, network-loss recovery, timezone behavior, and the approved performance/load targets.
+6. Configure and verify operational monitoring, alert thresholds, incident ownership, rollback communication, and one normal operating interval of observation.
+7. Complete the release checklist and record a Go/No-Go decision for promotion of the exact reviewed artifact.
+8. Before commercial launch, obtain legal retention/privacy/terms review, confirm product/domain availability, and conduct operator validation.
