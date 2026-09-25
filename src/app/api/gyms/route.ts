@@ -65,6 +65,13 @@ export async function POST(request: Request) {
         { code: "GYM_ALREADY_EXISTS", message: error.message, requestId: requestContext.requestId },
         { status: 409 },
       );
+    console.error("Gym workspace creation failed", {
+      requestId: requestContext.requestId,
+      error:
+        error instanceof Error
+          ? { name: error.name, message: error.message, stack: error.stack }
+          : String(error),
+    });
     return NextResponse.json(
       {
         code: "GYM_CREATION_FAILED",
