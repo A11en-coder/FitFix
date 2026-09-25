@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/nextjs";
 
 export function AuthControls() {
   if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
@@ -17,9 +17,16 @@ export function AuthControls() {
     );
   }
 
-  return (
-    <>
-      <SignedOut>
+  return <ConfiguredAuthControls />;
+}
+
+function ConfiguredAuthControls() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return null;
+
+  if (!isSignedIn) {
+    return (
+      <>
         <SignInButton mode="modal">
           <button className="button" type="button">
             Log in
@@ -30,13 +37,16 @@ export function AuthControls() {
             Create workspace
           </button>
         </SignUpButton>
-      </SignedOut>
-      <SignedIn>
-        <Link className="button button--accent" href="/dashboard">
-          Open workspace
-        </Link>
-        <UserButton />
-      </SignedIn>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Link className="button button--accent" href="/dashboard">
+        Open workspace
+      </Link>
+      <UserButton />
     </>
   );
 }
