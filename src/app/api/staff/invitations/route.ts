@@ -110,11 +110,30 @@ export async function POST(request: Request) {
       requestContext.requestId,
     );
   } catch (error) {
+    const clerkError = error as {
+      status?: unknown;
+      clerkTraceId?: unknown;
+      errors?: Array<{
+        code?: unknown;
+        message?: unknown;
+        longMessage?: unknown;
+      }>;
+    };
     logError("staff_invitation_failed", {
       requestId: requestContext.requestId,
       route: "/api/staff/invitations",
       actorId: userId,
-      error,
+      error: {
+        name: error instanceof Error ? error.name : "UnknownError",
+        message: error instanceof Error ? error.message : String(error),
+        status: clerkError.status,
+        clerkTraceId: clerkError.clerkTraceId,
+        clerkErrors: clerkError.errors?.map(({ code, message, longMessage }) => ({
+          code,
+          message,
+          longMessage,
+        })),
+      },
     });
     if (error instanceof ZodError)
       return NextResponse.json(
