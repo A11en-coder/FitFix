@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { findActiveMembership } from "../../features/auth/staff-service";
 import { WorkspaceNavigation } from "../../features/navigation/workspace-navigation";
 
@@ -13,6 +14,10 @@ export default async function WorkspaceLayout({
 
   const { userId } = await auth.protect();
   const membership = await findActiveMembership(userId);
+
+  if (!membership) {
+    redirect("/onboarding");
+  }
 
   return (
     <>
