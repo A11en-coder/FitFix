@@ -9,6 +9,11 @@ coverage/
 *.tsbuildinfo
 .vercel/
 
+# Local project planning and agent guidance
+/agents/
+/docs/
+/add/
+
 # Local databases and generated Prisma artifacts
 *.db
 *.db-journal
