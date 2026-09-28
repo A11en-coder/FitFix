@@ -4,10 +4,10 @@
 
 - **Assessment date:** 2026-09-24
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
-- **Current phase:** Phase 7 — Release readiness
-- **Current capability:** Portfolio MVP implementation complete; commercial launch evidence remains pending
-- **Approval state:** Capability 17 complete and Gate 2 approved
-- **Last capability commit:** `feat: add release and recovery evidence` (current `HEAD` after checkpoint)
+- **Current phase:** Production follow-up — identity and workspace access
+- **Current capability:** Invitation acceptance waits for local membership synchronization
+- **Approval state:** Capability 18 complete and Gate 2 approved
+- **Last capability commit:** `12190d6 fix: wait for invited staff membership sync`
 
 ## Completed capabilities
 
@@ -315,6 +315,21 @@ No application schema migration or production deployment was performed for this 
 
 Relevant requirements: PRD launch-readiness criteria and product dependencies; TRD deployment and rollout sequence, rollback runbook, recovery objectives, TC-23, operational gate, and launch gate.
 
+### 18. Invitation acceptance routing after membership synchronization
+
+Implemented, Gate 2 approved, and committed in `12190d6 fix: wait for invited staff membership sync`.
+
+Implemented:
+
+- Added an authenticated, no-cache endpoint that reports whether the signed-in user has an active local gym membership.
+- Updated Clerk invitation acceptance to wait for webhook-backed local membership creation before navigating to `/dashboard`.
+- Added bounded retry behavior and a manual retry action when webhook synchronization takes longer than the initial wait.
+- Added unit coverage for readiness after retries, bounded timeout, and transient check failures.
+
+No schema migration or production deployment was performed. If synchronization takes longer than the retry window, the invitee remains on the accepted-invitation page and can retry.
+
+Relevant requirements: PRD US-10 and FR-02; TRD Clerk invitation acceptance, webhook reconciliation, local membership authorization, and protected workspace routing.
+
 ## Verification
 
 - Prettier check: passed.
@@ -326,6 +341,7 @@ Relevant requirements: PRD launch-readiness criteria and product dependencies; T
 - Capability 16 verification: security foundation tests, typecheck, ESLint, Prettier, production build, Prisma validation with `.env.local`, and `git diff --check` passed.
 - Capability 17 verification: typecheck, ESLint, Prettier, 31 unit tests, production build, Prisma schema validation, read-only Prisma `SELECT 1`, and `prisma migrate status` passed outside the restricted sandbox; 11 migrations were found and the Neon database was up to date.
 - Capability 17 CI evidence: workflow configured with a PostgreSQL 16 service and clean-database `prisma migrate deploy`; the hosted workflow remains to be run by GitHub after push.
+- Capability 18 verification: typecheck, ESLint, all 34 unit tests, production build, targeted Prettier checks, and `git diff --check` passed. Repository-wide `npm run format:check` still reports the existing issue in untouched `src/app/api/gyms/route.ts`.
 - Prisma schema validation with `.env.local`: passed.
 - Dashboard migration deployment: passed. Neon migration `20260924010000_dashboard_indexes` was applied successfully, and `prisma migrate status` reports that the database schema is up to date.
 - Neon connectivity: read-only `SELECT 1` passed.
@@ -375,11 +391,15 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 16. Security, observability, and operational hardening — complete.
 17. Release and recovery evidence — complete.
 
+### Production follow-up — Identity and workspace access
+
+18. Invitation acceptance routing after membership synchronization — complete and approved.
+
 Deferred from MVP: preventive maintenance, member reporting, multiple locations, authenticated technicians, inventory, billing, browser push, AI features, and custom profile/notification preferences.
 
 ## Next action
 
-The approved portfolio MVP implementation is complete. Post-MVP release-readiness has begun with a local release-candidate evidence baseline for commit `226ef6184fa43837ac6d3b93d91c62360f0693fe`.
+Capability 18 is checkpointed at `12190d6`. Existing post-MVP release-readiness tasks remain open as documented above; the separate reported production issue has not yet been scoped into an approved capability.
 
 ### Release-readiness baseline evidence
 
