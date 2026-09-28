@@ -2,8 +2,9 @@
 
 import { isClerkAPIResponseError } from "@clerk/nextjs/errors";
 import { useSignIn, useSignUp } from "@clerk/nextjs/legacy";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { waitForActiveMembership } from "./membership-readiness";
 
 function clerkErrorMessage(error: unknown) {
   if (isClerkAPIResponseError(error)) return error.errors[0]?.longMessage ?? error.message;
@@ -20,13 +21,54 @@ export function InvitationAcceptance() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invitationAccepted, setInvitationAccepted] = useState(false);
+  const signInTicketStarted = useRef(false);
+
+  const checkActiveMembership = useCallback(async () => {
+    const response = await fetch("/api/auth/membership-status", { cache: "no-store" });
+    if (!response.ok) return false;
+    const result: unknown = await response.json();
+    return (
+      typeof result === "object" && result !== null && "active" in result && result.active === true
+    );
+  }, []);
+
+  const continueWhenMembershipIsReady = useCallback(async () => {
+    const ready = await waitForActiveMembership(checkActiveMembership);
+    if (ready) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    setError(
+      "Your invitation was accepted, but FitFix is still syncing your workspace access. Check again in a moment.",
+    );
+  }, [checkActiveMembership, router]);
+
+  async function retryWorkspaceNavigation() {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await continueWhenMembershipIsReady();
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   const ticket = searchParams.get("__clerk_ticket");
   const status = searchParams.get("__clerk_status");
 
   useEffect(() => {
-    if (!ticket || status !== "sign_in" || !isSignInLoaded || isSubmitting) return;
+    if (
+      !ticket ||
+      status !== "sign_in" ||
+      !isSignInLoaded ||
+      isSubmitting ||
+      signInTicketStarted.current
+    )
+      return;
 
+    signInTicketStarted.current = true;
     setIsSubmitting(true);
     void signIn
       .create({ strategy: "ticket", ticket })
@@ -37,13 +79,24 @@ export function InvitationAcceptance() {
           );
         }
         await setSignInActive({ session: result.createdSessionId });
-        router.replace("/dashboard");
+        setInvitationAccepted(true);
+        await continueWhenMembershipIsReady();
       })
       .catch((acceptanceError: unknown) => {
         setError(clerkErrorMessage(acceptanceError));
+      })
+      .finally(() => {
         setIsSubmitting(false);
       });
-  }, [isSignInLoaded, isSubmitting, router, setSignInActive, signIn, status, ticket]);
+  }, [
+    continueWhenMembershipIsReady,
+    isSignInLoaded,
+    isSubmitting,
+    setSignInActive,
+    signIn,
+    status,
+    ticket,
+  ]);
 
   async function acceptAsNewUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -65,9 +118,11 @@ export function InvitationAcceptance() {
         );
       }
       await setSignUpActive({ session: result.createdSessionId });
-      router.replace("/dashboard");
+      setInvitationAccepted(true);
+      await continueWhenMembershipIsReady();
     } catch (acceptanceError) {
       setError(clerkErrorMessage(acceptanceError));
+    } finally {
       setIsSubmitting(false);
     }
   }
@@ -83,12 +138,26 @@ export function InvitationAcceptance() {
     );
   }
 
-  if (status === "sign_in") {
+  if (status === "sign_in" || invitationAccepted) {
     return (
       <main className="auth-shell">
         <section className="card">
-          <h1>Accepting invitation</h1>
-          <p>{error ?? "Signing you in and joining the gym…"}</p>
+          <h1>{invitationAccepted ? "Joining your gym" : "Accepting invitation"}</h1>
+          <p>
+            {error ??
+              (invitationAccepted
+                ? "Your invitation is accepted. Waiting for workspace access to finish syncing…"
+                : "Signing you in and joining the gym…")}
+          </p>
+          {invitationAccepted && !isSubmitting ? (
+            <button
+              className="button"
+              onClick={() => void retryWorkspaceNavigation()}
+              type="button"
+            >
+              Check workspace access
+            </button>
+          ) : null}
         </section>
       </main>
     );
@@ -100,9 +169,15 @@ export function InvitationAcceptance() {
         <section className="card">
           <h1>Invitation accepted</h1>
           <p>Continue to FitFix to view your gym workspace.</p>
-          <a className="button" href="/dashboard">
-            Continue
-          </a>
+          <button
+            className="button"
+            disabled={isSubmitting}
+            onClick={() => void retryWorkspaceNavigation()}
+            type="button"
+          >
+            {isSubmitting ? "Checking workspace…" : "Continue"}
+          </button>
+          {error ? <p role="alert">{error}</p> : null}
         </section>
       </main>
     );
