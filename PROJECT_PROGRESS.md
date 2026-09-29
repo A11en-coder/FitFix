@@ -7,7 +7,7 @@
 - **Current phase:** Production follow-up — fault submission reliability
 - **Current capability:** Fault submission transaction reliability
 - **Approval state:** Capability 19 complete and Gate 2 approved
-- **Last capability commit:** `8a9a768 fix: reduce fault submission transaction time`
+- **Last capability commit:** `440c4e6 fix: reduce fault submission transaction time`
 
 ## Completed capabilities
 
@@ -332,7 +332,7 @@ Relevant requirements: PRD US-10 and FR-02; TRD Clerk invitation acceptance, web
 
 ### 19. Fault submission transaction reliability
 
-Implemented, validated, Gate 2 approved, and committed in `8a9a768 fix: reduce fault submission transaction time`.
+Implemented, validated, Gate 2 approved, and committed in `440c4e6 fix: reduce fault submission transaction time`.
 
 Implemented:
 
@@ -418,7 +418,7 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-Capability 19 is checkpointed in `8a9a768`. Existing post-MVP release-readiness tasks remain open as documented above.
+Capability 19 is checkpointed in `440c4e6`. Existing post-MVP release-readiness tasks remain open as documented above.
 
 ### Release-readiness baseline evidence
 
