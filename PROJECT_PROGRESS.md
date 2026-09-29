@@ -7,7 +7,7 @@
 - **Current phase:** Production follow-up — fault submission reliability
 - **Current capability:** Fault submission transaction reliability
 - **Approval state:** Capability 19 complete and Gate 2 approved
-- **Last capability commit:** `440c4e6 fix: reduce fault submission transaction time`
+- **Last capability commit:** `e6e2e88 style: format fault submission transaction`
 
 ## Completed capabilities
 
@@ -343,6 +343,8 @@ Implemented:
 
 No schema migration was required. Typecheck, scoped ESLint, and `git diff --check` passed. Automated tests and a live database submission were not run for this incident fix.
 
+CI follow-up: the workflow stopped at `format:check` because the fault-service transaction callback was not Prettier-formatted. Formatting was corrected in `e6e2e88 style: format fault submission transaction`. `npm run format:check` passed after normalizing both reported workspace files; the gyms route needed only a local Windows line-ending normalization and had no tracked content change. The remaining local CI checks (Prisma validation, typecheck, 34 unit tests, lint, and build) passed during the investigation; a hosted GitHub Actions rerun was not available from this environment.
+
 Relevant requirements: PRD FR-06 and FR-07; TRD fault submission contract, idempotency, atomic status history and audit writes, notification/outbox consistency, and database timeout recovery.
 
 ## Verification
@@ -418,7 +420,7 @@ Deferred from MVP: preventive maintenance, member reporting, multiple locations,
 
 ## Next action
 
-Capability 19 is checkpointed in `440c4e6`. Existing post-MVP release-readiness tasks remain open as documented above.
+Capability 19 is checkpointed in `440c4e6`, with its CI formatting follow-up in `e6e2e88`. Existing post-MVP release-readiness tasks remain open as documented above.
 
 ### Release-readiness baseline evidence
 
