@@ -382,172 +382,178 @@ export async function submitFault(
 
   const transactionStartedAt = Date.now();
   try {
-    const result = await database.$transaction(async (tx) => {
-      const equipment = await tx.equipment.findFirst({
-        where: { publicId: input.equipmentPublicId, gymId: membership.gymId, archivedAt: null },
-      });
-      if (!equipment) throw new FaultSubmissionNotFoundError("Equipment not found.");
-
-      let draft: { id: string; equipmentId: string | null; version: number } | null = null;
-      if (input.draftId) {
-        draft = await tx.faultDraft.findFirst({
-          where: draftWhere(input.draftId, membership),
-          select: { id: true, equipmentId: true, version: true },
+    const result = await database.$transaction(
+      async (tx) => {
+        const equipment = await tx.equipment.findFirst({
+          where: { publicId: input.equipmentPublicId, gymId: membership.gymId, archivedAt: null },
         });
-        if (!draft) throw new FaultSubmissionNotFoundError("Fault draft not found.");
-        if (input.version !== undefined && draft.version !== input.version)
-          throw new FaultSubmissionConflictError(
-            "This draft was changed elsewhere. Refresh and try again.",
-          );
-        if (draft.equipmentId && draft.equipmentId !== equipment.id)
-          throw new FaultSubmissionConflictError("The draft equipment does not match the report.");
-      }
+        if (!equipment) throw new FaultSubmissionNotFoundError("Equipment not found.");
 
-      if (input.mediaAssetIds.length && !draft)
-        throw new FaultSubmissionConflictError("Submitted photos must belong to a draft.");
-
-      const media = input.mediaAssetIds.length
-        ? await tx.mediaAsset.findMany({
-            where: {
-              id: { in: input.mediaAssetIds },
-              gymId: membership.gymId,
-              draftId: draft?.id,
-              state: MediaState.DRAFT,
-            },
-          })
-        : [];
-      if (media.length !== input.mediaAssetIds.length)
-        throw new FaultSubmissionNotFoundError("One or more submitted photos could not be found.");
-
-      if (statusRank(input.equipmentStatus) < statusRank(equipment.currentStatus))
-        throw new FaultSubmissionConflictError(
-          "A fault reporter cannot restore equipment to a less restrictive status.",
-        );
-
-      const fault = await tx.faultReport.create({
-        data: {
-          gymId: membership.gymId,
-          publicReference: publicReference(),
-          idempotencyKey,
-          idempotencyFingerprint: requestFingerprint,
-          equipmentId: equipment.id,
-          reporterMemberId: membership.id,
-          title: input.title,
-          description: input.description,
-          severity: input.severity as FaultSeverity,
-          reportedEquipmentStatus: input.equipmentStatus as EquipmentStatus,
-          immediateAction: input.immediateAction ?? null,
-          discoveredAt: input.discoveredAt,
-        },
-        include: faultInclude,
-      });
-
-      if (statusRank(input.equipmentStatus) > statusRank(equipment.currentStatus)) {
-        const now = new Date();
-        await tx.equipment.update({
-          where: { id: equipment.id },
-          data: {
-            currentStatus: input.equipmentStatus as EquipmentStatus,
-            version: { increment: 1 },
-          },
-        });
-        await tx.equipmentStatusInterval.updateMany({
-          where: { equipmentId: equipment.id, endedAt: null },
-          data: { endedAt: now },
-        });
-        await tx.equipmentStatusInterval.create({
-          data: {
-            equipmentId: equipment.id,
-            status: input.equipmentStatus as EquipmentStatus,
-            sourceFaultId: fault.id,
-            changedByMemberId: membership.id,
-            startedAt: now,
-          },
-        });
-      }
-
-      if (media.length)
-        await tx.mediaAsset.updateMany({
-          where: { id: { in: media.map(({ id }) => id) } },
-          data: { draftId: null, faultId: fault.id, state: MediaState.ATTACHED },
-        });
-
-      if (draft) {
-        await tx.mediaAsset.updateMany({
-          where: { draftId: draft.id, state: MediaState.DRAFT },
-          data: { draftId: null, state: MediaState.DELETE_PENDING },
-        });
-        await tx.faultDraft.delete({ where: { id: draft.id } });
-      }
-
-      await tx.faultUpdate.create({
-        data: {
-          faultId: fault.id,
-          gymId: membership.gymId,
-          authorMemberId: membership.id,
-          type: FaultUpdateType.STATUS,
-          body: "Fault reported.",
-          metadata: { status: FaultStatus.REPORTED },
-        },
-      });
-      await tx.auditEvent.create({
-        data: {
-          gymId: membership.gymId,
-          actorMemberId: membership.id,
-          entityType: "FaultReport",
-          entityId: fault.id,
-          action: "FAULT_REPORTED",
-          metadata: { reference: fault.publicReference, severity: input.severity },
-          requestId,
-        },
-      });
-
-      if (input.severity === "HIGH" || input.severity === "CRITICAL") {
-        const managers = await tx.gymMember.findMany({
-          where: { gymId: membership.gymId, role: "MANAGER", status: "ACTIVE" },
-          select: { id: true, user: { select: { email: true } } },
-        });
-        if (managers.length) {
-          const notifications = await tx.notification.createManyAndReturn({
-            data: managers.map((manager) => ({
-              gymId: membership.gymId,
-              recipientMemberId: manager.id,
-              faultId: fault.id,
-              type: "FAULT_HIGH_SEVERITY",
-              title: "High-severity fault reported",
-              body: `${fault.publicReference} requires manager attention: ${fault.title}.`,
-              destination: `/faults/${fault.publicReference}`,
-              dedupeKey: `fault-high-severity:${fault.id}:${manager.id}`,
-            })),
-            select: { id: true, recipientMemberId: true },
+        let draft: { id: string; equipmentId: string | null; version: number } | null = null;
+        if (input.draftId) {
+          draft = await tx.faultDraft.findFirst({
+            where: draftWhere(input.draftId, membership),
+            select: { id: true, equipmentId: true, version: true },
           });
-          const emailByMemberId = new Map(
-            managers.map((manager) => [manager.id, manager.user.email]),
+          if (!draft) throw new FaultSubmissionNotFoundError("Fault draft not found.");
+          if (input.version !== undefined && draft.version !== input.version)
+            throw new FaultSubmissionConflictError(
+              "This draft was changed elsewhere. Refresh and try again.",
+            );
+          if (draft.equipmentId && draft.equipmentId !== equipment.id)
+            throw new FaultSubmissionConflictError(
+              "The draft equipment does not match the report.",
+            );
+        }
+
+        if (input.mediaAssetIds.length && !draft)
+          throw new FaultSubmissionConflictError("Submitted photos must belong to a draft.");
+
+        const media = input.mediaAssetIds.length
+          ? await tx.mediaAsset.findMany({
+              where: {
+                id: { in: input.mediaAssetIds },
+                gymId: membership.gymId,
+                draftId: draft?.id,
+                state: MediaState.DRAFT,
+              },
+            })
+          : [];
+        if (media.length !== input.mediaAssetIds.length)
+          throw new FaultSubmissionNotFoundError(
+            "One or more submitted photos could not be found.",
           );
-          await tx.emailOutbox.createMany({
-            data: notifications.map((notification) => {
-              const recipientEmail = emailByMemberId.get(notification.recipientMemberId);
-              if (!recipientEmail) throw new Error("Notification recipient email was not found.");
-              return {
-                dedupeKey: `email:fault-high-severity:${fault.id}:${notification.recipientMemberId}`,
-                notificationId: notification.id,
-                recipientEmail,
-                templateKey: "fault-event",
-                payload: {
-                  reference: fault.publicReference,
-                  title: "High-severity fault reported",
-                  body: `${fault.publicReference} requires manager attention: ${fault.title}.`,
-                  destination: `/faults/${fault.publicReference}`,
-                },
-              };
-            }),
+
+        if (statusRank(input.equipmentStatus) < statusRank(equipment.currentStatus))
+          throw new FaultSubmissionConflictError(
+            "A fault reporter cannot restore equipment to a less restrictive status.",
+          );
+
+        const fault = await tx.faultReport.create({
+          data: {
+            gymId: membership.gymId,
+            publicReference: publicReference(),
+            idempotencyKey,
+            idempotencyFingerprint: requestFingerprint,
+            equipmentId: equipment.id,
+            reporterMemberId: membership.id,
+            title: input.title,
+            description: input.description,
+            severity: input.severity as FaultSeverity,
+            reportedEquipmentStatus: input.equipmentStatus as EquipmentStatus,
+            immediateAction: input.immediateAction ?? null,
+            discoveredAt: input.discoveredAt,
+          },
+          include: faultInclude,
+        });
+
+        if (statusRank(input.equipmentStatus) > statusRank(equipment.currentStatus)) {
+          const now = new Date();
+          await tx.equipment.update({
+            where: { id: equipment.id },
+            data: {
+              currentStatus: input.equipmentStatus as EquipmentStatus,
+              version: { increment: 1 },
+            },
+          });
+          await tx.equipmentStatusInterval.updateMany({
+            where: { equipmentId: equipment.id, endedAt: null },
+            data: { endedAt: now },
+          });
+          await tx.equipmentStatusInterval.create({
+            data: {
+              equipmentId: equipment.id,
+              status: input.equipmentStatus as EquipmentStatus,
+              sourceFaultId: fault.id,
+              changedByMemberId: membership.id,
+              startedAt: now,
+            },
           });
         }
-      }
 
-      return tx.faultReport.findUniqueOrThrow({ where: { id: fault.id }, include: faultInclude });
-    },
-    { timeout: 10_000 });
+        if (media.length)
+          await tx.mediaAsset.updateMany({
+            where: { id: { in: media.map(({ id }) => id) } },
+            data: { draftId: null, faultId: fault.id, state: MediaState.ATTACHED },
+          });
+
+        if (draft) {
+          await tx.mediaAsset.updateMany({
+            where: { draftId: draft.id, state: MediaState.DRAFT },
+            data: { draftId: null, state: MediaState.DELETE_PENDING },
+          });
+          await tx.faultDraft.delete({ where: { id: draft.id } });
+        }
+
+        await tx.faultUpdate.create({
+          data: {
+            faultId: fault.id,
+            gymId: membership.gymId,
+            authorMemberId: membership.id,
+            type: FaultUpdateType.STATUS,
+            body: "Fault reported.",
+            metadata: { status: FaultStatus.REPORTED },
+          },
+        });
+        await tx.auditEvent.create({
+          data: {
+            gymId: membership.gymId,
+            actorMemberId: membership.id,
+            entityType: "FaultReport",
+            entityId: fault.id,
+            action: "FAULT_REPORTED",
+            metadata: { reference: fault.publicReference, severity: input.severity },
+            requestId,
+          },
+        });
+
+        if (input.severity === "HIGH" || input.severity === "CRITICAL") {
+          const managers = await tx.gymMember.findMany({
+            where: { gymId: membership.gymId, role: "MANAGER", status: "ACTIVE" },
+            select: { id: true, user: { select: { email: true } } },
+          });
+          if (managers.length) {
+            const notifications = await tx.notification.createManyAndReturn({
+              data: managers.map((manager) => ({
+                gymId: membership.gymId,
+                recipientMemberId: manager.id,
+                faultId: fault.id,
+                type: "FAULT_HIGH_SEVERITY",
+                title: "High-severity fault reported",
+                body: `${fault.publicReference} requires manager attention: ${fault.title}.`,
+                destination: `/faults/${fault.publicReference}`,
+                dedupeKey: `fault-high-severity:${fault.id}:${manager.id}`,
+              })),
+              select: { id: true, recipientMemberId: true },
+            });
+            const emailByMemberId = new Map(
+              managers.map((manager) => [manager.id, manager.user.email]),
+            );
+            await tx.emailOutbox.createMany({
+              data: notifications.map((notification) => {
+                const recipientEmail = emailByMemberId.get(notification.recipientMemberId);
+                if (!recipientEmail) throw new Error("Notification recipient email was not found.");
+                return {
+                  dedupeKey: `email:fault-high-severity:${fault.id}:${notification.recipientMemberId}`,
+                  notificationId: notification.id,
+                  recipientEmail,
+                  templateKey: "fault-event",
+                  payload: {
+                    reference: fault.publicReference,
+                    title: "High-severity fault reported",
+                    body: `${fault.publicReference} requires manager attention: ${fault.title}.`,
+                    destination: `/faults/${fault.publicReference}`,
+                  },
+                };
+              }),
+            });
+          }
+        }
+
+        return tx.faultReport.findUniqueOrThrow({ where: { id: fault.id }, include: faultInclude });
+      },
+      { timeout: 10_000 },
+    );
     logInfo("fault_submission_transaction_completed", {
       requestId,
       gymId: membership.gymId,
@@ -580,8 +586,7 @@ export async function submitFault(
         requestId,
         gymId: membership.gymId,
         elapsedMs: Date.now() - transactionStartedAt,
-        errorCode:
-          error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "UNKNOWN",
+        errorCode: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "UNKNOWN",
       });
     }
     throw error;
