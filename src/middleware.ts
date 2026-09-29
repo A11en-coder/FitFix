@@ -2,9 +2,8 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
 export default clerkMiddleware({
-  frontendApiProxy: {
-    enabled: process.env.VERCEL_ENV === "production",
-  },
+  signInUrl: process.env.CLERK_SIGN_IN_URL ?? "/sign-in",
+  signUpUrl: process.env.CLERK_SIGN_UP_URL ?? "/sign-up",
 });
 
 export const config = {
