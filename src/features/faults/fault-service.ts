@@ -8,8 +8,8 @@ import {
   Prisma,
 } from "@prisma/client";
 import { db } from "../../server/db";
+import { logInfo, logWarn } from "../../server/logger";
 import { AuthorizationError, assertManager, type ActiveMembership } from "../auth/role-policy";
-import { persistNotification } from "../notifications/notification-service";
 import type { FaultSubmissionInput } from "./submission-schema";
 import type { FaultListQueryInput, FaultReviewInput } from "./review-schema";
 
@@ -380,6 +380,7 @@ export async function submitFault(
     return toFaultResult(existing);
   }
 
+  const transactionStartedAt = Date.now();
   try {
     const result = await database.$transaction(async (tx) => {
       const equipment = await tx.equipment.findFirst({
@@ -504,23 +505,53 @@ export async function submitFault(
       if (input.severity === "HIGH" || input.severity === "CRITICAL") {
         const managers = await tx.gymMember.findMany({
           where: { gymId: membership.gymId, role: "MANAGER", status: "ACTIVE" },
-          select: { id: true },
+          select: { id: true, user: { select: { email: true } } },
         });
-        for (const manager of managers) {
-          await persistNotification(tx, {
-            gymId: membership.gymId,
-            recipientMemberId: manager.id,
-            faultId: fault.id,
-            reference: fault.publicReference,
-            type: "FAULT_HIGH_SEVERITY",
-            title: "High-severity fault reported",
-            body: `${fault.publicReference} requires manager attention: ${fault.title}.`,
-            dedupeKey: `fault-high-severity:${fault.id}:${manager.id}`,
+        if (managers.length) {
+          const notifications = await tx.notification.createManyAndReturn({
+            data: managers.map((manager) => ({
+              gymId: membership.gymId,
+              recipientMemberId: manager.id,
+              faultId: fault.id,
+              type: "FAULT_HIGH_SEVERITY",
+              title: "High-severity fault reported",
+              body: `${fault.publicReference} requires manager attention: ${fault.title}.`,
+              destination: `/faults/${fault.publicReference}`,
+              dedupeKey: `fault-high-severity:${fault.id}:${manager.id}`,
+            })),
+            select: { id: true, recipientMemberId: true },
+          });
+          const emailByMemberId = new Map(
+            managers.map((manager) => [manager.id, manager.user.email]),
+          );
+          await tx.emailOutbox.createMany({
+            data: notifications.map((notification) => {
+              const recipientEmail = emailByMemberId.get(notification.recipientMemberId);
+              if (!recipientEmail) throw new Error("Notification recipient email was not found.");
+              return {
+                dedupeKey: `email:fault-high-severity:${fault.id}:${notification.recipientMemberId}`,
+                notificationId: notification.id,
+                recipientEmail,
+                templateKey: "fault-event",
+                payload: {
+                  reference: fault.publicReference,
+                  title: "High-severity fault reported",
+                  body: `${fault.publicReference} requires manager attention: ${fault.title}.`,
+                  destination: `/faults/${fault.publicReference}`,
+                },
+              };
+            }),
           });
         }
       }
 
       return tx.faultReport.findUniqueOrThrow({ where: { id: fault.id }, include: faultInclude });
+    },
+    { timeout: 10_000 });
+    logInfo("fault_submission_transaction_completed", {
+      requestId,
+      gymId: membership.gymId,
+      elapsedMs: Date.now() - transactionStartedAt,
     });
     return toFaultResult(result);
   } catch (error) {
@@ -529,11 +560,29 @@ export async function submitFault(
         where: { gymId_idempotencyKey: { gymId: membership.gymId, idempotencyKey } },
         include: faultInclude,
       });
-      if (duplicate && duplicate.idempotencyFingerprint === requestFingerprint)
+      if (duplicate && duplicate.idempotencyFingerprint === requestFingerprint) {
+        logInfo("fault_submission_duplicate_reconciled", {
+          requestId,
+          gymId: membership.gymId,
+          elapsedMs: Date.now() - transactionStartedAt,
+        });
         return toFaultResult(duplicate);
+      }
       throw new FaultSubmissionConflictError(
         "The fault submission conflicts with an existing record.",
       );
+    }
+    if (
+      !(error instanceof FaultSubmissionNotFoundError) &&
+      !(error instanceof FaultSubmissionConflictError)
+    ) {
+      logWarn("fault_submission_transaction_failed", {
+        requestId,
+        gymId: membership.gymId,
+        elapsedMs: Date.now() - transactionStartedAt,
+        errorCode:
+          error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "UNKNOWN",
+      });
     }
     throw error;
   }

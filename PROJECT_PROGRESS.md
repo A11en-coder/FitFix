@@ -2,12 +2,12 @@
 
 ## Status
 
-- **Assessment date:** 2026-09-24
+- **Assessment date:** 2026-09-29
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
-- **Current phase:** Production follow-up — identity and workspace access
-- **Current capability:** Invitation acceptance waits for local membership synchronization
-- **Approval state:** Capability 18 complete and Gate 2 approved
-- **Last capability commit:** `12190d6 fix: wait for invited staff membership sync`
+- **Current phase:** Production follow-up — fault submission reliability
+- **Current capability:** Fault submission transaction reliability
+- **Approval state:** Capability 19 complete and Gate 2 approved
+- **Last capability commit:** `8a9a768 fix: reduce fault submission transaction time`
 
 ## Completed capabilities
 
@@ -330,6 +330,21 @@ No schema migration or production deployment was performed. If synchronization t
 
 Relevant requirements: PRD US-10 and FR-02; TRD Clerk invitation acceptance, webhook reconciliation, local membership authorization, and protected workspace routing.
 
+### 19. Fault submission transaction reliability
+
+Implemented, validated, Gate 2 approved, and committed in `8a9a768 fix: reduce fault submission transaction time`.
+
+Implemented:
+
+- Reduced sequential high-severity manager notification and email-outbox writes using batched Prisma operations inside the existing fault submission transaction.
+- Set a bounded 10-second timeout for the interactive submission transaction.
+- Added elapsed-time operational logs for successful, failed, and idempotently reconciled submissions, keyed by request and gym IDs.
+- Preserved idempotency, atomic report/equipment/media/history/audit/notification writes, and existing notification content.
+
+No schema migration was required. Typecheck, scoped ESLint, and `git diff --check` passed. Automated tests and a live database submission were not run for this incident fix.
+
+Relevant requirements: PRD FR-06 and FR-07; TRD fault submission contract, idempotency, atomic status history and audit writes, notification/outbox consistency, and database timeout recovery.
+
 ## Verification
 
 - Prettier check: passed.
@@ -395,11 +410,15 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 
 18. Invitation acceptance routing after membership synchronization — complete and approved.
 
+### Production follow-up — Fault submission reliability
+
+19. Fault submission transaction reliability — complete and approved.
+
 Deferred from MVP: preventive maintenance, member reporting, multiple locations, authenticated technicians, inventory, billing, browser push, AI features, and custom profile/notification preferences.
 
 ## Next action
 
-Capability 18 is checkpointed at `12190d6`. Existing post-MVP release-readiness tasks remain open as documented above; the separate reported production issue has not yet been scoped into an approved capability.
+Capability 19 is checkpointed in `8a9a768`. Existing post-MVP release-readiness tasks remain open as documented above.
 
 ### Release-readiness baseline evidence
 
