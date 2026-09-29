@@ -4,10 +4,10 @@
 
 - **Assessment date:** 2026-09-29
 - **Specification sources:** `docs/FitFix_Product_Requirements_Document.md` and `docs/FitFix_Technical_Requirements_Document.md`
-- **Current phase:** Production follow-up — fault submission reliability
-- **Current capability:** Fault submission transaction reliability
-- **Approval state:** Capability 19 complete and Gate 2 approved
-- **Last capability commit:** `e6e2e88 style: format fault submission transaction`
+- **Current phase:** Production follow-up — Clerk domain and QR sign-in
+- **Current capability:** Align application auth configuration with disabled Frontend API proxy
+- **Approval state:** Capability 20 complete and Gate 2 approved
+- **Last capability commit:** `2058f87 fix: disable Clerk proxy in production`
 
 ## Completed capabilities
 
@@ -349,6 +349,7 @@ Relevant requirements: PRD FR-06 and FR-07; TRD fault submission contract, idemp
 
 ## Verification
 
+- Capability 20 (2026-09-29): TypeScript typecheck and targeted ESLint for `src/middleware.ts` and `src/app/layout.tsx` passed; `git diff --check` passed. The full lint command was interrupted before completion; automated tests were not run.
 - Prettier check: passed.
 - Typecheck: passed after the production build completed.
 - Unit tests: 31 passed.
@@ -416,11 +417,17 @@ Known non-blocking issue: `npm install` reported 5 dependency audit findings (1 
 
 19. Fault submission transaction reliability — complete and approved.
 
+### Production follow-up — Clerk domain and QR sign-in
+
+20. Align application auth configuration with disabled Frontend API proxy — complete and approved in `2058f87`.
+
+Removed production proxy enablement from Clerk middleware and removed the client-side proxy URL from `ClerkProvider`. Middleware now explicitly routes protected unauthenticated requests to FitFix's `/sign-in` and `/sign-up` pages. Deployment and live QR sign-in verification remain pending.
+
 Deferred from MVP: preventive maintenance, member reporting, multiple locations, authenticated technicians, inventory, billing, browser push, AI features, and custom profile/notification preferences.
 
 ## Next action
 
-Capability 19 is checkpointed in `440c4e6`, with its CI formatting follow-up in `e6e2e88`. Existing post-MVP release-readiness tasks remain open as documented above.
+Capability 20 is checkpointed in `2058f87`. Deploy this commit and verify the production QR scan redirects to FitFix's sign-in page, then returns to the original equipment page after authentication. Existing post-MVP release-readiness tasks remain open as documented above.
 
 ### Release-readiness baseline evidence
 
