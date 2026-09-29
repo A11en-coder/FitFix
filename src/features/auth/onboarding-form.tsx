@@ -15,11 +15,13 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
     setSubmitting(true);
     setError(null);
     try {
+      // create a new gym workspace
       const response = await fetch("/api/gyms", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name, slug }),
       });
+      // if the request fails, show the error message
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         setError(

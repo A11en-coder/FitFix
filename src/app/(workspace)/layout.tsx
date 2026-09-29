@@ -12,6 +12,7 @@ export default async function WorkspaceLayout({
     throw new Error("Clerk authentication is not configured for the workspace.");
   }
 
+  // protect the workspace route and redirect to onboarding if the user is not a member of any workspace
   const { userId } = await auth.protect();
   const membership = await findActiveMembership(userId);
 

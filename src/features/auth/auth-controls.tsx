@@ -1,3 +1,4 @@
+// shows login/sign-up buttons when signed out and a workspace link plus Clerk’s <UserButton /> when signed in
 "use client";
 
 import Link from "next/link";

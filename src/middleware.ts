@@ -1,3 +1,4 @@
+// connects Clerk authentication to the Next.js app and protects the workspace route
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
 export default clerkMiddleware({
