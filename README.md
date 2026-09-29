@@ -106,3 +106,7 @@ FitFix is designed around tenant isolation and least-privilege roles, but a prod
 ## License
 
 `package.json` declares the project as `UNLICENSED`, and this repository does not grant permission for open-source reuse. Add a specific license file if the project is later released as open source.
+
+## Link
+
+https://fitfix.casa
